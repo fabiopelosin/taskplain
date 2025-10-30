@@ -15,8 +15,11 @@ Ad-hoc task notes, spreadsheets, or conversational updates quickly diverge from 
 **Expensive Coordination**
 Conversational loops with AI agents burn tokens and time because every participant must rebuild context from scratch, repeatedly asking "what was I working on?" or "why did we make this decision?"
 
+**Opaque Agent Sessions**
+Long-running agent sessions can implement multiple changes without clear documentation of what was attempted, what succeeded, and what decisions were made. Without structured checkpoints, humans lose visibility into agent work until it's completed.
+
 **Solution**
-Taskplain keeps tasks as Markdown files in your repository, making context accurate, reviewable in PRs, and efficiently accessible through deterministic CLI commands and JSON output.
+Taskplain keeps tasks as Markdown files in your repository, making context accurate, reviewable in PRs, and efficiently accessible through deterministic CLI commands and JSON output. Agents document their plans in task files BEFORE coding (Overview, Acceptance Criteria, Technical Approach) and summarize their work AFTER completion (Post-Implementation Insights). This creates natural checkpoints where humans can review what will be dispatched and audit what was accomplished in multi-task sessions.
 
 ## Core Principles
 

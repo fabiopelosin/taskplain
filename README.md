@@ -10,14 +10,19 @@
 
 A lightweight task management system that stores tasks as plain Markdown files in your repository. Both you and your coding agents work from the same source of truth. No external ticketing system, no API tokens, just files that evolve with your code.
 
-## Why?
+## Why Taskplain?
 
-Modern coding agents can work for 5-10 minutes on a task, but they need clear structure and context. Taskplain solves this by:
+Modern coding agents can work for 5-10 minutes on a task, but they need clear structure and context. Taskplain gives you that structure:
 
-- **Decoupling task creation from execution**: Create and refine tasks asynchronously, then dispatch them to agents when ready
-- **Providing rich context**: Tasks have full access to your codebase during creation, capturing the why alongside the what
-- **Enabling parallel work**: Run multiple agents on different tasks without conflicts
-- **Building institutional memory**: Completed tasks stay in the repo, providing context for future work
+**Human-in-the-loop oversight**: Agents document their plans in task files BEFORE coding and summarize their work AFTER completion. Review what will be dispatched before it runs, and get convenient summaries of what was accomplished in long agent sessions.
+
+**Everything in the repo**: Agents have full access to the codebase during task creation and enrichment. They can reference actual code and task history, not just vague descriptions. Capture the why alongside the what, and avoid repeating learned mistakes.
+
+**Async workflow**: Create and refine a backlog of well-specified tasks, then dispatch them to agents when ready. No more real-time back-and-forth to clarify requirements.
+
+**Parallel execution without conflicts**: Multiple agents work independently on different tasks. Task history stays in-repo forever, providing institutional memory for future work.
+
+**Tool-agnostic**: Works with any coding agent (Claude, Cursor, Aider, custom MCP servers). Git-oriented, so task history is searchable via `git log` and `grep`.
 
 ## How it Works
 
@@ -93,14 +98,6 @@ The web interface provides real-time updates, shows which tasks are complete, an
 ![](./docs/assets/web-ui.png)
 
 The board now surfaces an animated live connection badge, tidier destructive action prompts, and a `Complete task` control inside the task modal so you can finish work without leaving the detail view.
-
-## Key Benefits
-
-**Context-aware creation**: Tasks created with full repo context, agents can reference actual code  
-**Async workflow**: Create a backlog of well-specified tasks, dispatch when ready  
-**Parallel execution**: Multiple agents work independently without stepping on each other  
-**Git-native memory**: Task history lives forever, searchable via `git log` and `grep`  
-**Tool-agnostic**: Works with any coding agent (Claude, Cursor, Aider, custom MCP servers)
 
 ## Task Organization
 
