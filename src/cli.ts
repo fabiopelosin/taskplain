@@ -3,6 +3,7 @@ import path from "node:path";
 import { Command, Option } from "commander";
 import fs from "fs-extra";
 import open from "open";
+import packageJson from "../package.json";
 
 import { GitAdapter } from "./adapters/gitAdapter";
 import { SNIPPET_VERSION } from "./domain/canonical";
@@ -2657,11 +2658,18 @@ function renderAggregatedHelp(root: Command): string {
   return `${segments.join(separator)}\n`;
 }
 
+const repoRoot = path.resolve(__dirname, "..");
+const isDevBuild =
+  fs.pathExistsSync(path.join(repoRoot, ".git")) &&
+  fs.pathExistsSync(path.join(repoRoot, "package.json"));
+const pkgVersion = packageJson.version;
+const displayVersion = isDevBuild ? `dev (based on ${pkgVersion})` : pkgVersion;
+
 const program = new Command();
 program
   .name("taskplain")
   .description("Taskplain CLI for repository-native task management")
-  .version("0.1.0");
+  .version(displayVersion);
 
 program.helpCommand(false);
 
