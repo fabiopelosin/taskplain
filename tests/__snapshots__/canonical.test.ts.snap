@@ -1,0 +1,850 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`handbook rendering > emits deterministic markdown for the full handbook 1`] = `
+"# Taskplain CLI Playbook
+
+Complete reference for using Taskplain's CLI. This document serves as both a human-readable guide and the canonical reference for coding agents.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Conventions](#conventions)
+- [Task Lifecycle](#task-lifecycle)
+- [Setup and Initialization](#setup-and-initialization)
+- [Creating and Managing Tasks](#creating-and-managing-tasks)
+- [Querying and Searching](#querying-and-searching)
+- [Agent Workflows](#agent-workflows)
+- [Validation and Quality](#validation-and-quality)
+- [Parallel Execution](#parallel-execution)
+- [Maintenance](#maintenance)
+- [Web Interface](#web-interface)
+- [Command Reference](#command-reference)
+- [Example Workflows](#example-workflows)
+
+## Overview
+
+Taskplain keeps task metadata in-repo as Markdown files under \`tasks/\` with CLI-enforced deterministic structure. All humans, automations, and LLM agents use the CLI as the single write path.
+
+**Core principles:**
+- Tasks are Markdown files with YAML frontmatter
+- State transitions move files between directories
+- Git is the source of truth
+- All commands support \`--output json\` for automation
+- Mutations support \`--dry-run\` for safety
+
+## Conventions
+
+### State Directories
+
+Tasks live under \`tasks/\` organized by state:
+
+| Directory | State | Purpose |
+|-----------|-------|---------|
+| \`tasks/00-idea/\` | idea | Unrefined ideas and proposals |
+| \`tasks/10-ready/\` | ready | Ready to start |
+| \`tasks/20-in-progress/\` | in-progress | Active work |
+| \`tasks/30-done/\` | done | Completed |
+| \`tasks/40-canceled/\` | canceled | Abandoned |
+
+### Filenames
+
+**Active tasks:**
+\`\`\`
+[kind]-[id].md
+\`\`\`
+Examples: \`task-hero-cta.md\`, \`story-billing-a11y.md\`, \`epic-nav-refactor.md\`
+
+**Completed tasks:**
+\`\`\`
+[YYYY-MM-DD] [kind]-[id].md
+\`\`\`
+Example: \`2025-10-30 task-hero-cta.md\`
+
+### Task IDs
+
+- 1-3 lowercase words, hyphen-separated
+- Maximum 24 characters total
+- Concrete nouns preferred: \`hero-cta\`, \`billing-a11y\`, \`nav-refactor\`
+- Avoid sentence-length descriptions
+
+### Git Commits
+
+Use conventional commits with task trailer:
+\`\`\`bash
+git commit -m "feat(scope): description  [Task:<id>]"
+\`\`\`
+
+Example:
+\`\`\`bash
+git commit -m "feat(auth): add 2FA  [Task:auth-2fa]"
+\`\`\`
+
+### Task Structure
+
+Every task file has:
+
+1. **YAML frontmatter** with metadata (id, title, state, priority, etc.)
+2. **Required headings** in order:
+   - \`## Overview\` - What and why
+   - \`## Acceptance Criteria\` - Checkboxes defining done
+   - \`## Technical Approach\` - Implementation strategy
+   - \`<!-- ## Post-Implementation Insights -->\` - Uncomment when completing
+
+## Task Lifecycle
+
+The standard task flow:
+
+1. **Create** - Capture initial idea with \`taskplain new\`
+2. **Refine** - Add details, acceptance criteria, technical approach
+3. **Ready** - Move to ready state when fully specified
+4. **Pickup** - Agent claims task with \`taskplain pickup\`
+5. **Work** - Implement changes described in task
+6. **Complete** - Fill Post-Implementation Insights, run \`taskplain complete\`
+7. **Archive** - Eventually cleanup with \`taskplain cleanup\`
+
+### State Transitions
+
+\`\`\`
+idea → ready → in-progress → done
+                              ↓
+                         canceled
+\`\`\`
+
+**Important rules:**
+- Tasks in idea state need refinement before work begins
+- Use \`taskplain pickup <id>\` to start work (promotes parents, advances to in-progress)
+- Complete all acceptance criteria before running \`taskplain complete\`
+- Fill Post-Implementation Insights before completing
+- Blocked tasks require \`--force\` to move unless canceling
+
+## Setup and Initialization
+
+Bootstrap a repository for Taskplain:
+
+\`\`\`bash
+# Create tasks/ directory structure
+taskplain init
+
+# Add agent operating guide to AGENTS.md
+taskplain inject AGENTS.md
+
+# Validate setup
+taskplain validate --strict
+\`\`\`
+
+### Verify Installation
+
+\`\`\`bash
+# Check CLI is available
+taskplain --version
+taskplain --help
+
+# View full command reference
+taskplain help --all
+
+# Get machine-readable contract
+taskplain help --json
+\`\`\`
+
+## Creating and Managing Tasks
+
+### Create New Tasks
+
+\`\`\`bash
+# Quick capture (infers kind from parent or defaults to task)
+taskplain new --title "Fix mobile navbar"
+
+# Specify kind explicitly
+taskplain new --title "Improve checkout flow" --kind epic
+
+# Create child task under parent
+taskplain new --title "Add payment validation" --parent improve-checkout-flow
+
+# Create with metadata
+taskplain new --title "Stabilize websocket" \\
+  --kind story \\
+  --meta priority=high \\
+  --meta size=medium \\
+  --meta executor=expert
+\`\`\`
+
+### Update Tasks
+
+\`\`\`bash
+# Update single metadata field
+taskplain update fix-mobile-navbar --meta priority=urgent
+
+# Update multiple fields
+taskplain update fix-mobile-navbar \\
+  --meta blocked="waiting on design" \\
+  --meta size=large
+
+# Clear a field
+taskplain update fix-mobile-navbar --unset blocked
+
+# Replace entire section
+taskplain update fix-mobile-navbar \\
+  --field overview "Navbar breaks at 768px on iOS Safari."
+
+# Replace entire body (advanced)
+taskplain update fix-mobile-navbar --field body "$(cat new-body.md)"
+\`\`\`
+
+### Move Tasks Between States
+
+\`\`\`bash
+# Move single task
+taskplain move fix-mobile-navbar ready
+
+# Move with dry-run preview
+taskplain move fix-mobile-navbar ready --dry-run --output json
+
+# Move and cascade to descendants (promote children)
+taskplain move epic-checkout ready --cascade ready
+
+# Move and cascade cancel to descendants
+taskplain move epic-checkout canceled --cascade cancel
+
+# Force move blocked task
+taskplain move blocked-task ready --force
+\`\`\`
+
+### Reparent Tasks
+
+\`\`\`bash
+# Move task to new parent (appends to end of children list)
+taskplain adopt new-parent-id child-task-id
+
+# Insert before specific sibling
+taskplain adopt parent-id child-id --before sibling-id
+
+# Insert after specific sibling
+taskplain adopt parent-id child-id --after sibling-id
+
+# Preview reparenting
+taskplain adopt parent-id child-id --dry-run --output json
+\`\`\`
+
+### Delete Tasks
+
+\`\`\`bash
+# Delete task (fails if referenced by dependencies)
+taskplain delete obsolete-task
+
+# Preview deletion
+taskplain delete obsolete-task --dry-run --output json
+\`\`\`
+
+## Querying and Searching
+
+### List Tasks
+
+\`\`\`bash
+# All tasks
+taskplain list --output json
+
+# Filter by state
+taskplain list --state ready
+taskplain list --state in-progress,done
+
+# Filter by priority
+taskplain list --priority high
+taskplain list --priority high,urgent
+
+# Open tasks across all states
+taskplain list --open
+
+# Search by keyword (title and ID)
+taskplain list --search "auth|login"
+taskplain list --search "websocket" --state ready
+
+# Get children of parent
+taskplain list --parent epic-checkout
+
+# Plain output (IDs only, one per line)
+taskplain list --state ready --output plain
+\`\`\`
+
+### Show Task Details
+
+\`\`\`bash
+# Full task content
+taskplain show fix-mobile-navbar
+
+# JSON output for automation
+taskplain show fix-mobile-navbar --output json
+\`\`\`
+
+### View Hierarchy
+
+\`\`\`bash
+# Tree under specific task
+taskplain tree epic-checkout
+
+# All open work grouped by state
+taskplain tree --open
+
+# JSON output
+taskplain tree epic-checkout --output json
+\`\`\`
+
+### Get Next Task
+
+\`\`\`bash
+# Get highest priority ready task
+taskplain next
+
+# Get multiple tasks for parallel execution
+taskplain next --parallelize 3
+
+# JSON output with ranking details
+taskplain next --output json
+\`\`\`
+
+## Agent Workflows
+
+### Standard Agent Flow
+
+When an agent receives a task assignment:
+
+\`\`\`bash
+# 1. Claim the task (verifies readiness, promotes parents, advances to in-progress)
+taskplain pickup fix-mobile-navbar
+
+# 2. Get full context including ancestor and child data
+CONTEXT=$(taskplain pickup fix-mobile-navbar --output json)
+
+# 3. Perform the work described in the task
+# ... agent implements changes ...
+
+# 4. Before completing, fill Post-Implementation Insights section
+#    (Uncomment the heading and fill Changelog, Decisions, Architecture)
+
+# 5. Validate and complete
+taskplain complete fix-mobile-navbar
+\`\`\`
+
+### Pickup Command
+
+\`taskplain pickup\` is the critical agent entry point. It:
+
+- Verifies task is in ready or idea state
+- Promotes idea ancestors to ready if needed
+- Advances the target task to in-progress
+- Bundles all ancestor context
+- Returns ranked list of direct children
+- Updates timestamps
+
+\`\`\`bash
+# Human-readable output
+taskplain pickup fix-mobile-navbar
+
+# Machine-readable with full context
+taskplain pickup fix-mobile-navbar --output json
+
+# Preview without state changes
+taskplain pickup fix-mobile-navbar --dry-run
+\`\`\`
+
+### Complete Command
+
+\`taskplain complete\` finishes a task. It:
+
+- Validates Post-Implementation Insights are present
+- Moves task to done state
+- Timestamps completion
+- Renames file with date prefix
+
+\`\`\`bash
+# Complete task
+taskplain complete fix-mobile-navbar
+
+# Preview completion
+taskplain complete fix-mobile-navbar --dry-run --output json
+\`\`\`
+
+**Before running complete:**
+1. Check all acceptance criteria checkboxes
+2. Uncomment \`## Post-Implementation Insights\` heading
+3. Fill three subsections:
+   - **Changelog** (required) - What shipped using Keep a Changelog verbs
+   - **Decisions** (optional) - Key choices, rejected alternatives, rationale
+   - **Architecture** (optional) - Notable patterns, refactors, structures
+
+### Creating Follow-up Tasks
+
+If an agent discovers new work during implementation:
+
+\`\`\`bash
+# 1. Complete current task first
+taskplain complete current-task
+
+# 2. Then create follow-up tasks
+taskplain new --title "Follow-up: handle edge case" \\
+  --meta depends_on=current-task
+\`\`\`
+
+## Validation and Quality
+
+### Validate Tasks
+
+\`\`\`bash
+# Basic validation
+taskplain validate
+
+# Strict mode (warnings become errors)
+taskplain validate --strict
+
+# Auto-fix common issues
+taskplain validate --fix
+
+# Fix and rename mismatched files
+taskplain validate --fix --rename-files --strict
+
+# Validate specific tasks
+taskplain validate fix-mobile-navbar epic-checkout
+
+# JSON output for CI
+taskplain validate --strict --output json
+\`\`\`
+
+### Validation Checks
+
+Validation enforces:
+
+- **Schema**: Required fields, valid enums, timestamp formats
+- **Structure**: Required body sections with proper headings
+- **Hierarchy**: No cycles, depth limits, parent-child consistency
+- **Dependencies**: All referenced IDs exist
+- **Filenames**: Match state directory and naming convention
+- **Acceptance criteria**: At least one checkbox present
+- **Post-Implementation Insights**: Present for done tasks
+
+### Common Fixes
+
+\`\`\`bash
+# Fix normalizes:
+# - Front matter key order
+# - Missing required headings
+# - Acceptance criteria (converts plain text to checkboxes)
+# - Stale timestamps
+# - File renames when state/date mismatches filename
+
+taskplain validate --fix
+\`\`\`
+
+## Parallel Execution
+
+### Conflict Detection
+
+Tasks with overlapping \`touches\` globs cannot run in parallel unless forced. The \`next\` command respects this:
+
+\`\`\`bash
+# Get 3 non-conflicting tasks
+taskplain next --parallelize 3 --output json
+\`\`\`
+
+### Sequential Dispatch
+
+\`\`\`bash
+# Process ready tasks one at a time
+taskplain list --state ready --output plain \\
+  | head -n 3 \\
+  | while IFS= read -r task_id; do
+      agent-execute "$task_id"
+    done
+\`\`\`
+
+### Parallel Dispatch
+
+\`\`\`bash
+# Launch agents in background, wait for all to finish
+taskplain next --parallelize 3 --output plain \\
+  | while IFS= read -r task_id; do
+      agent-execute "$task_id" &
+    done
+
+wait
+\`\`\`
+
+### Shell Integration
+
+\`\`\`bash
+# Using xargs for parallel execution
+taskplain next --parallelize 5 --output plain \\
+  | xargs -P5 -I{} agent-execute {}
+
+# Background jobs with process management
+for task_id in $(taskplain list --state ready --output plain | head -n 3); do
+  (
+    echo "Starting $task_id"
+    agent-execute "$task_id"
+    echo "Completed $task_id"
+  ) &
+done
+
+# Wait for all background jobs
+wait
+echo "All tasks completed"
+\`\`\`
+
+## Maintenance
+
+### Refresh Agent Guidance
+
+When Taskplain updates or you change AGENTS.md:
+
+\`\`\`bash
+# Update managed snippet
+taskplain inject AGENTS.md
+
+# Check if snippet is current (CI usage)
+taskplain inject AGENTS.md --check
+
+# Preview without writing
+taskplain inject AGENTS.md --stdout
+\`\`\`
+
+### Cleanup Completed Tasks
+
+Remove old done tasks after capturing insights:
+
+\`\`\`bash
+# Preview what would be deleted
+taskplain cleanup --older-than 30d --dry-run
+
+# View JSON output
+taskplain cleanup --older-than 30d --dry-run --output json
+
+# Perform cleanup
+taskplain cleanup --older-than 30d
+\`\`\`
+
+**Important**: Cleanup deletes task files after extracting Post-Implementation Insights. Ensure insights are documented in \`docs/changelog.md\`, \`docs/decisions.md\`, and \`docs/architecture.md\` before running cleanup. Deleted files remain in Git history for recovery.
+
+Time formats:
+- \`30d\` - 30 days
+- \`3m\` - 3 months
+- \`1y\` - 1 year
+
+## Web Interface
+
+Launch local Kanban board:
+
+\`\`\`bash
+# Start server (opens browser automatically)
+taskplain web --open
+
+# Specify port
+taskplain web --port 3000
+
+# Run without opening browser
+taskplain web
+\`\`\`
+
+**Features:**
+- Drag-and-drop state transitions
+- Inline task creation and editing
+- Real-time updates via WebSocket
+- Acceptance criteria progress tracking
+- Parent-child relationship visualization
+- Responsive layout with task details panel
+
+**Architecture:**
+- Fastify server on 127.0.0.1
+- REST endpoints: \`/api/tasks\`, \`/api/tasks/:id\`
+- WebSocket: \`/ws\` for live updates
+- Deterministic port allocation per project
+
+## Command Reference
+
+### Global Options
+
+All commands support:
+
+\`\`\`bash
+--output human|json   # Output format (default: human)
+--color auto|always|never  # ANSI color control
+--dry-run            # Preview without changes (mutations only)
+\`\`\`
+
+### Initialization
+
+\`\`\`bash
+taskplain init                    # Create tasks/ structure
+taskplain inject <file>           # Update agent instructions
+\`\`\`
+
+### Task Management
+
+\`\`\`bash
+taskplain new --title "..." [options]
+  --kind <epic|story|task>
+  --parent <id>
+  --state <state>
+  --meta <key=value>
+
+taskplain update <id> [options]
+  --meta <key=value>
+  --unset <key>
+  --field <section> "<content>"
+
+taskplain move <id> <state> [options]
+  --cascade <ready|cancel>
+  --force
+
+taskplain pickup <id> [options]
+taskplain complete <id> [options]
+taskplain delete <id> [options]
+taskplain adopt <parent> <child> [options]
+  --before <sibling>
+  --after <sibling>
+\`\`\`
+
+### Querying
+
+\`\`\`bash
+taskplain list [options]
+  --state <state>[,<state>...]
+  --priority <priority>[,<priority>...]
+  --open
+  --parent <id>
+  --search "<keyword>"
+
+taskplain show <id>
+taskplain tree [<id>] [options]
+  --open
+
+taskplain next [options]
+  --parallelize <N>
+\`\`\`
+
+### Validation
+
+\`\`\`bash
+taskplain validate [<id>...] [options]
+  --strict
+  --fix
+  --rename-files
+\`\`\`
+
+### Maintenance
+
+\`\`\`bash
+taskplain cleanup --older-than <Nd|Nm|Ny> [options]
+taskplain web [options]
+  --port <port>
+  --open
+\`\`\`
+
+### Help and Reference
+
+\`\`\`bash
+taskplain help --all         # Aggregated help output
+taskplain help --json        # Machine-readable contract
+taskplain --version          # Show version
+\`\`\`
+
+## Example Workflows
+
+### Creating an Epic with Stories and Tasks
+
+\`\`\`bash
+# 1. Create epic
+taskplain new --kind epic --title "Improve checkout flow"
+
+# 2. Add stories under epic
+taskplain new --title "Add payment validation" --parent improve-checkout-flow
+taskplain new --title "Improve error messages" --parent improve-checkout-flow
+
+# 3. Add tasks under first story
+taskplain new --title "Validate card number" --parent add-payment-validation
+taskplain new --title "Add CVV check" --parent add-payment-validation
+taskplain new --title "Validate expiry date" --parent add-payment-validation
+
+# 4. Refine first task
+taskplain update validate-card-number \\
+  --field overview "Implement Luhn algorithm for card validation." \\
+  --meta size=small \\
+  --meta executor=standard
+
+# 5. Move story to ready (cascade to promote children)
+taskplain move add-payment-validation ready --cascade ready
+
+# 6. Verify structure
+taskplain tree improve-checkout-flow
+\`\`\`
+
+### Agent Picks Up and Executes Task
+
+\`\`\`bash
+# Agent workflow
+TASK_ID=$(taskplain next --output json | jq -r '.id')
+
+# Get full context
+taskplain pickup "$TASK_ID"
+
+# Read task details
+TASK_DATA=$(taskplain show "$TASK_ID" --output json)
+
+# Implement the work...
+# (agent writes code, runs tests, etc.)
+
+# Mark complete
+taskplain complete "$TASK_ID"
+
+# Commit with task trailer
+git commit -m "feat(checkout): implement card validation  [Task:$TASK_ID]"
+\`\`\`
+
+### Parallel Agent Execution
+
+\`\`\`bash
+# Get 3 non-conflicting ready tasks
+TASKS=$(taskplain next --parallelize 3 --output json)
+
+# Extract IDs and dispatch
+echo "$TASKS" | jq -r '.tasks[].id' | while read -r task_id; do
+  (
+    echo "Agent starting: $task_id"
+    taskplain pickup "$task_id"
+    # agent implementation...
+    taskplain complete "$task_id"
+    echo "Agent completed: $task_id"
+  ) &
+done
+
+wait
+echo "All agents finished"
+\`\`\`
+
+### Handling Dependencies
+
+\`\`\`bash
+# Create tasks with dependencies
+taskplain new --title "Refactor auth module"
+taskplain new --title "Add OAuth support" \\
+  --meta depends_on=refactor-auth-module
+
+# Verify dependency chain
+taskplain show add-oauth-support --output json | jq '.meta.depends_on'
+
+# List blocked tasks
+taskplain list --output json | jq '.[] | select(.meta.depends_on | length > 0)'
+\`\`\`
+
+### Searching and Filtering
+
+\`\`\`bash
+# Find all auth-related ready tasks
+taskplain list --state ready --search "auth"
+
+# High priority open work
+taskplain list --open --priority high,urgent
+
+# Tasks ready for expert agents
+taskplain list --state ready --output json \\
+  | jq '.[] | select(.meta.executor == "expert")'
+
+# Small, low-ambiguity tasks for simple agents
+taskplain list --state ready --output json \\
+  | jq '.[] | select(.meta.size == "small" and .meta.ambiguity == "low")'
+\`\`\`
+
+### Validation in CI
+
+\`\`\`bash
+#!/bin/bash
+set -e
+
+# Validate all tasks
+taskplain validate --strict --output json
+
+# Check agent guidance is current
+taskplain inject AGENTS.md --check
+
+# Verify no tasks stuck in-progress
+IN_PROGRESS=$(taskplain list --state in-progress --output plain | wc -l)
+if [ "$IN_PROGRESS" -gt 5 ]; then
+  echo "Warning: $IN_PROGRESS tasks in-progress"
+  exit 1
+fi
+
+echo "Validation passed"
+\`\`\`
+
+### Cleanup and Archiving
+
+\`\`\`bash
+# Preview old tasks
+taskplain cleanup --older-than 60d --dry-run
+
+# Review insights before cleanup
+taskplain list --state done --output json \\
+  | jq -r '.[] | "\\(.meta.id): \\(.meta.completed_at)"'
+
+# Perform cleanup after documenting insights
+taskplain cleanup --older-than 60d
+
+# Commit the cleanup
+git add tasks/
+git commit -m "chore: cleanup tasks older than 60 days"
+\`\`\`
+
+### Reordering Children
+
+\`\`\`bash
+# View current order
+taskplain tree epic-checkout
+
+# Move child to different position
+taskplain adopt epic-checkout validate-card --after add-cvv-check
+
+# Verify new order
+taskplain tree epic-checkout --output json | jq '.children'
+\`\`\`
+
+### Blocking and Unblocking
+
+\`\`\`bash
+# Block task with reason
+taskplain update fix-mobile-navbar --meta blocked="waiting on design review"
+
+# List blocked tasks
+taskplain list --output json | jq '.[] | select(.meta.blocked != null)'
+
+# Unblock task
+taskplain update fix-mobile-navbar --unset blocked
+
+# Try to move blocked task (fails without --force)
+taskplain move blocked-task in-progress --force
+\`\`\`
+
+---
+
+## Additional Resources
+
+- **PRD**: See \`docs/prd.md\` for product vision and goals
+- **Architecture**: See \`docs/architecture.md\` for technical design
+- **Decisions**: See \`docs/decisions.md\` for ADRs
+- **Changelog**: See \`docs/changelog.md\` for version history
+- **Agent Instructions**: See \`AGENTS.md\` for the managed agent guide
+
+## Getting Help
+
+\`\`\`bash
+# CLI help
+taskplain --help
+taskplain <command> --help
+
+# Full reference
+taskplain help --all
+
+# Machine contract
+taskplain help --json
+
+# Report issues
+https://github.com/fabiopelosin/taskplain/issues
+\`\`\`
+"
+`;

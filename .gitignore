@@ -1,0 +1,33 @@
+# Build artifacts
+dist/
+**/dist/
+
+# Test coverage
+coverage/
+coverage-*/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Tool caches & temp files
+tmp/
+.local/
+.npm-cache/
+
+# Editor settings
+.vscode/
+
+# Operating system cruft
+.DS_Store
+.claude/settings.local.json
+coverage/
+.pnpm-store/
+
+# Taskplain local state
+.taskplain/

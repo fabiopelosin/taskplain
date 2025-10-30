@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Taskplain Board</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/assets/board.css" />
+  </head>
+  <body>
+    <header class="board-header">
+      <div class="header-left">
+        <h1 id="board-heading">Taskplain Board</h1>
+        <div class="controls" id="state-toggles">
+          <span class="controls-title">Columns</span>
+        </div>
+      </div>
+      <div class="status">
+        <div
+          id="connection-status"
+          class="live-indicator"
+          data-state="warn"
+          role="status"
+          aria-live="polite"
+          title="Connection status"
+        >
+          <span class="live-indicator-dot" aria-hidden="true"></span>
+          <span class="live-indicator-label">Connecting…</span>
+        </div>
+        <span id="activity-status" class="status-message" aria-live="polite"></span>
+        <span id="last-updated" class="status-timestamp"></span>
+      </div>
+    </header>
+    <main>
+      <div id="board" class="board"></div>
+    </main>
+
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div
+      id="task-modal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="task-modal-title"
+    >
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-header-top">
+            <div>
+              <h2 id="task-modal-title">Task</h2>
+              <div class="task-id-container">
+                <span id="field-id"></span>
+                <button
+                  type="button"
+                  class="btn-copy-id"
+                  id="copy-task-id"
+                  title="Copy task ID"
+                  aria-label="Copy task ID"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path
+                      d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="modal-header-actions">
+              <button
+                type="button"
+                class="btn-icon btn-close-ghost"
+                id="modal-close"
+                title="Close"
+                aria-label="Close"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <form id="task-modal-form">
+          <div class="modal-columns">
+            <div class="modal-column modal-column-meta">
+              <div class="field-group">
+                <label for="field-title">Title</label>
+                <input
+                  id="field-title"
+                  name="title"
+                  type="text"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="field-group">
+                <label for="field-kind">Kind</label>
+                <select id="field-kind" name="kind" disabled>
+                  <option value="epic">Epic</option>
+                  <option value="story">Story</option>
+                  <option value="task">Task</option>
+                </select>
+              </div>
+              <div class="grid-fields">
+                <div class="field-group" hidden>
+                  <label for="field-state">State</label>
+                  <select id="field-state" name="state" disabled>
+                    <option value="idea">Idea</option>
+                    <option value="ready">Ready</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="done">Done</option>
+                    <option value="canceled">Canceled</option>
+                  </select>
+                </div>
+                <div class="field-group scale-field" data-field="priority" data-label="Priority" data-values="none,low,normal,high,urgent">
+                  <label id="scale-label-priority">Priority</label>
+                  <div class="scale-slider" role="group" aria-labelledby="scale-label-priority"></div>
+                  <select id="field-priority" name="priority" class="visually-hidden">
+                    <option value="none">None</option>
+                    <option value="low">Low</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div class="field-group scale-field" data-field="size" data-label="Size" data-values="tiny,small,medium,large,xl">
+                  <label id="scale-label-size">Size</label>
+                  <div class="scale-slider" role="group" aria-labelledby="scale-label-size"></div>
+                  <select id="field-size" name="size" class="visually-hidden">
+                    <option value="tiny">Tiny</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="xl">XL</option>
+                  </select>
+                </div>
+                <div class="field-group scale-field" data-field="ambiguity" data-label="Ambiguity" data-values="low,medium,high">
+                  <label id="scale-label-ambiguity">Ambiguity</label>
+                  <div class="scale-slider" role="group" aria-labelledby="scale-label-ambiguity"></div>
+                  <select id="field-ambiguity" name="ambiguity" class="visually-hidden">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div class="field-group scale-field" data-field="executor" data-label="Executor" data-values="simple,standard,expert,human_review">
+                  <label id="scale-label-executor">Executor</label>
+                  <div class="scale-slider" role="group" aria-labelledby="scale-label-executor"></div>
+                  <select id="field-executor" name="executor" class="visually-hidden">
+                    <option value="simple">Simple</option>
+                    <option value="standard">Standard</option>
+                    <option value="expert">Expert</option>
+                    <option value="human_review">Needs human review</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Blocked text field removed in favor of a toggle button -->
+            </div>
+            <div class="modal-column modal-column-body">
+              <div class="field-group body-field-group">
+                <div id="field-body-preview" class="body-preview"></div>
+                <textarea
+                  id="field-body-edit"
+                  class="body-edit-textarea"
+                  style="display: none"
+                  spellcheck="false"
+                ></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-status" id="modal-status"></div>
+          <div class="modal-actions-container">
+            <div class="modal-actions-left">
+              <button
+                type="button"
+                class="btn-secondary"
+                id="modal-block-toggle"
+              >
+                Block
+              </button>
+              <button
+                type="button"
+                class="btn-secondary"
+                id="open-child-modal"
+                disabled
+              >
+                New child task
+              </button>
+              <button type="button" class="btn-danger" id="modal-delete">
+                Delete task
+              </button>
+            </div>
+            <div class="modal-actions-right">
+              <button type="button" class="btn-success" id="modal-complete">
+                Complete task
+              </button>
+              <button type="button" class="btn-secondary" id="modal-edit-toggle">
+                Edit
+              </button>
+              <button type="button" class="btn-secondary" id="modal-cancel">
+                Cancel
+              </button>
+              <button type="submit" class="btn-primary" id="modal-save">
+                Save changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      id="body-modal"
+      class="modal modal-secondary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="body-modal-title"
+    >
+      <div class="modal-content body-editor">
+        <div class="modal-header">
+          <h2 id="body-modal-title">Edit Body</h2>
+          <span id="body-modal-id"></span>
+        </div>
+        <div class="body-editor-area">
+          <textarea id="body-editor-input" spellcheck="false"></textarea>
+        </div>
+        <div class="modal-status" id="body-modal-status"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="body-modal-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn-primary" id="body-modal-save">
+            Save body
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="child-modal"
+      class="modal modal-secondary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="child-modal-title"
+    >
+      <form
+        id="child-modal-form"
+        class="modal-sheet child-form-sheet child-form"
+        novalidate
+      >
+        <div class="child-form-heading">
+          <h2 id="child-modal-title">Create Task</h2>
+          <span id="child-modal-parent"></span>
+        </div>
+        <div class="child-form-body">
+          <div class="field-group">
+            <label for="child-title">Title</label>
+            <input
+              id="child-title"
+              name="child-title"
+              type="text"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <div class="grid-fields">
+            <div class="field-group">
+              <label for="child-kind">Kind</label>
+              <select id="child-kind" name="child-kind"></select>
+            </div>
+            <div class="field-group">
+              <label for="child-priority">Priority</label>
+              <select id="child-priority" name="child-priority">
+                <option value="none">None</option>
+                <option value="low">Low</option>
+                <option value="normal" selected>Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-status" id="child-modal-status"></div>
+        <div class="sheet-actions">
+          <button type="button" class="btn-secondary" id="child-modal-cancel">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" id="child-modal-save">
+            Create task
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div
+      id="delete-modal"
+      class="modal modal-secondary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-modal-title"
+    >
+      <div class="modal-sheet alert-panel">
+        <h2 id="delete-modal-title">Delete Task</h2>
+        <p id="delete-modal-message"></p>
+        <div class="modal-status" id="delete-modal-status"></div>
+        <div class="sheet-actions">
+          <button type="button" class="btn-secondary" id="delete-modal-cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn-danger" id="delete-modal-confirm">
+            Delete task
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="block-modal"
+      class="modal modal-secondary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="block-modal-title"
+    >
+      <div class="modal-content block-modal-content">
+        <div class="modal-header">
+          <h2 id="block-modal-title">Block Task</h2>
+        </div>
+        <form id="block-modal-form" class="child-form">
+          <div class="field-group">
+            <label for="block-reason">Reason (one line)</label>
+            <input id="block-reason" name="block-reason" type="text" autocomplete="off" />
+          </div>
+          <div class="modal-status" id="block-modal-status"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="block-modal-cancel">
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary" id="block-modal-confirm">
+              Block task
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div
+      id="notification-region"
+      class="notification-region"
+      aria-live="polite"
+      aria-atomic="false"
+    ></div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/marked@12.0.1/lib/marked.umd.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <script src="/assets/board.js" defer></script>
+  </body>
+</html>
