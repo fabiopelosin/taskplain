@@ -31,3 +31,4 @@ coverage/
 
 # Taskplain local state
 .taskplain/
+tasks/00-idea/
