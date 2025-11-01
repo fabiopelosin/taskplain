@@ -764,7 +764,7 @@ graph TD
 
 ### Types
 
-```ts
+````ts
 export type State = "idea" | "ready" | "in-progress" | "done" | "canceled";
 export type Kind = "epic" | "story" | "task";
 export type Priority = "none" | "low" | "normal" | "high" | "urgent";
@@ -792,6 +792,7 @@ export interface TaskMeta {
   ambiguity: Ambiguity;
   executor: Executor;
   isolation: Isolation;
+  commit_message?: string;
   touches?: string[];
   depends_on?: string[];
   blocks?: string[];
@@ -810,9 +811,8 @@ export interface TaskDoc {
   body: string; // markdown
   path: string; // absolute
 }
+````
 
-Dispatch fields default to `size=medium`, `ambiguity=low`, `executor=standard`, and `isolation=module`. Normalization lowercases incoming values, applies defaults when absent, and raises warnings for risky combinations (`size: xl` with `isolation: isolated`, `executor: simple` with `ambiguity: high`). `touches` captures string globs or module tags; `depends_on` / `blocks` store task ids and are validated for existence, slug format, duplication, and self-reference during `taskplain validate`. `blocked` is an optional short string overlay; the CLI coerces `true|null` to empty strings at read time, surfaces warnings when terminal work remains blocked, and prevents state transitions (except cancel) without an explicit `--force`.
-```
 
 Canonical metadata (states, headings, snippet text, command arguments) lives alongside these types so documentation, describe payloads, and CLI behavior stay aligned.
 

@@ -64,6 +64,7 @@ const taskMetaJsonSchema = {
     parent: { type: "string" },
     state: { type: "string", enum: [...stateOrder] },
     blocked: { type: "string" },
+    commit_message: { type: "string", minLength: 1 },
     priority: { type: "string", enum: [...priorityOrder] },
     size: { type: "string", enum: [...sizeOrder], default: defaultSize },
     ambiguity: {

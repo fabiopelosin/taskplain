@@ -169,6 +169,7 @@ describe("FixService", () => {
         ...created.meta,
         state: "done" as const,
         completed_at: created.meta.updated_at,
+        commit_message: `chore(fix): ensure insights heading [Task:${created.meta.id}]`,
       },
       path: donePath,
       body: strippedBody,

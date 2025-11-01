@@ -33,6 +33,7 @@ export interface NewTaskOptions {
   priority?: Priority;
   assignees?: string[];
   labels?: string[];
+  commit_message?: string;
 }
 
 export interface TaskServiceDeps {
@@ -48,6 +49,7 @@ const UPDATE_META_FIELDS = [
   "labels",
   "state",
   "blocked",
+  "commit_message",
   "links",
   "size",
   "ambiguity",
@@ -68,6 +70,7 @@ const UNSETTABLE_FIELDS: UpdateMetaField[] = [
   "labels",
   "links",
   "blocked",
+  "commit_message",
   "touches",
   "depends_on",
   "blocks",
@@ -166,6 +169,7 @@ export class TaskService {
     const state = options.state ?? "idea";
     const priority = options.priority ?? "normal";
     const parentId = options.parent?.trim();
+    const rawCommitMessage = options.commit_message?.trim();
 
     const timestamp = nowUtc();
     const completionDate = timestamp.slice(0, 10);
@@ -203,6 +207,10 @@ export class TaskService {
       executor: defaultExecutor,
       isolation: defaultIsolation,
     };
+
+    if (rawCommitMessage) {
+      meta.commit_message = rawCommitMessage;
+    }
 
     const doc: TaskDoc = {
       meta,

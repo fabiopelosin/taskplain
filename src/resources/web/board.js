@@ -67,6 +67,13 @@
   const blockModalCancel = document.getElementById("block-modal-cancel");
   const blockModalConfirm = document.getElementById("block-modal-confirm");
   const blockModalStatus = document.getElementById("block-modal-status");
+  const commitModal = document.getElementById("commit-modal");
+  const commitModalForm = document.getElementById("commit-modal-form");
+  const commitModalTitle = document.getElementById("commit-modal-title");
+  const commitMessageInput = document.getElementById("commit-message-input");
+  const commitModalStatus = document.getElementById("commit-modal-status");
+  const commitModalCancel = document.getElementById("commit-modal-cancel");
+  const commitModalSave = document.getElementById("commit-modal-save");
   const childModal = document.getElementById("child-modal");
   const childModalTitle = document.getElementById("child-modal-title");
   const childModalParent = document.getElementById("child-modal-parent");
@@ -104,6 +111,10 @@
   const taskDetailsCache = new Map();
   let previousDoneTaskIds = new Set();
   let hasRenderedSnapshot = false;
+  let commitModalTaskId = null;
+  let commitModalDetail = null;
+  let commitModalSource = null;
+  let isSavingCommitMessage = false;
   let bodyEditorDetail = null;
   let childModalParentDetail = null;
   const expandedParents = loadExpandedParents();
@@ -157,6 +168,24 @@
         return;
       }
       confirmBlock(reason);
+    });
+  }
+  if (commitModalCancel) {
+    commitModalCancel.addEventListener("click", () => {
+      closeCommitModal("cancel");
+    });
+  }
+  if (commitModal) {
+    commitModal.addEventListener("click", (event) => {
+      if (event.target === commitModal) {
+        closeCommitModal("cancel");
+      }
+    });
+  }
+  if (commitModalForm) {
+    commitModalForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void handleCommitModalSubmit();
     });
   }
   modalBackdrop.addEventListener("click", closeModal);
@@ -687,8 +716,27 @@
       if (origin === state) {
         return;
       }
-      moveTask(taskId, state);
+      if (state === "done") {
+        void handleDropCompletion(taskId);
+      } else {
+        moveTask(taskId, state);
+      }
     });
+  }
+
+  async function handleDropCompletion(taskId) {
+    const detail = await fetchTaskDetails(taskId).catch((error) => {
+      const message =
+        (error instanceof Error ? error.message : String(error)) ||
+        "Failed to prepare completion";
+      setActivityStatus(message, "error");
+      pushNotification(message, "error", { persistent: true });
+      return null;
+    });
+    if (!detail) {
+      return;
+    }
+    await openCommitModalForTask(taskId, "board", detail);
   }
 
   function attachTaskInteractions(element, taskId, taskState) {
@@ -1127,32 +1175,215 @@
     saveButton.disabled = false;
   }
 
+  async function openCommitModalForTask(taskId, source, detail) {
+    if (!commitModal || !commitMessageInput || !commitModalSave || !commitModalStatus) {
+      return;
+    }
+
+    let resolvedDetail = detail ?? null;
+    if (!resolvedDetail) {
+      try {
+        resolvedDetail = await fetchTaskDetails(taskId);
+      } catch (error) {
+        const message =
+          (error instanceof Error ? error.message : String(error)) ||
+          "Failed to load commit message";
+        if (source === "modal") {
+          modalStatus.textContent = message;
+        } else {
+          setActivityStatus(message, "error");
+          pushNotification(message, "error", { persistent: true });
+        }
+        return;
+      }
+    }
+
+    commitModalTaskId = taskId;
+    commitModalDetail = resolvedDetail;
+    commitModalSource = source;
+    commitModalStatus.textContent = "";
+    commitModalSave.disabled = false;
+    commitMessageInput.disabled = false;
+    commitMessageInput.value = resolvedDetail?.commit_message ?? "";
+    if (commitModalTitle) {
+      const label = resolvedDetail?.title || resolvedDetail?.id || "Commit Message";
+      commitModalTitle.textContent = `Commit Message — ${label}`;
+    }
+    if (source === "board") {
+      document.body.classList.add("modal-open");
+      modalBackdrop.classList.add("active");
+    }
+    commitModal.classList.add("active");
+    if (source === "modal" && completeButton) {
+      completeButton.disabled = true;
+    }
+    requestAnimationFrame(() => {
+      commitMessageInput.focus();
+      const length = commitMessageInput.value.length;
+      commitMessageInput.setSelectionRange(length, length);
+    });
+  }
+
+  function closeCommitModal(reason) {
+    if (!commitModal) {
+      return;
+    }
+    commitModal.classList.remove("active");
+    if (commitMessageInput) {
+      commitMessageInput.value = "";
+      commitMessageInput.disabled = false;
+    }
+    if (commitModalStatus) {
+      commitModalStatus.textContent = "";
+    }
+    if (commitModalSave) {
+      commitModalSave.disabled = false;
+    }
+    const source = commitModalSource;
+    commitModalTaskId = null;
+    commitModalDetail = null;
+    commitModalSource = null;
+    isSavingCommitMessage = false;
+    if (source === "modal" && completeButton) {
+      completeButton.disabled = false;
+    }
+    if (source === "board") {
+      document.body.classList.remove("modal-open");
+      modalBackdrop.classList.remove("active");
+    }
+    if (reason === "cancel") {
+      if (source === "modal") {
+        modalStatus.textContent = "Completion canceled";
+      } else {
+        setActivityStatus("Completion canceled", "warn");
+        setTimeout(() => setActivityStatus(""), 2000);
+      }
+    }
+  }
+
+  async function handleCommitModalSubmit() {
+    if (!commitModalTaskId || !commitMessageInput || isSavingCommitMessage) {
+      return;
+    }
+    const message = commitMessageInput.value.trim();
+    if (message.length === 0) {
+      commitModalStatus.textContent = "Commit message is required";
+      commitMessageInput.focus();
+      return;
+    }
+
+    const taskId = commitModalTaskId;
+    const source = commitModalSource || "board";
+    const existing = commitModalDetail?.commit_message ?? "";
+
+    if (existing === message) {
+      const detail = commitModalDetail;
+      closeCommitModal("confirm");
+      await finalizeCompletion(taskId, source, detail, message);
+      return;
+    }
+
+    isSavingCommitMessage = true;
+    commitModalSave.disabled = true;
+    commitMessageInput.disabled = true;
+    commitModalStatus.textContent = "Saving commit message…";
+    const saved = await saveCommitMessage(taskId, message);
+    isSavingCommitMessage = false;
+    if (!saved) {
+      commitModalSave.disabled = false;
+      commitMessageInput.disabled = false;
+      return;
+    }
+    if (commitModalDetail) {
+      commitModalDetail = { ...commitModalDetail, commit_message: message };
+    }
+    const detail = commitModalDetail;
+    closeCommitModal("confirm");
+    await finalizeCompletion(taskId, source, detail, message);
+  }
+
+  async function saveCommitMessage(taskId, commitMessage) {
+    try {
+      const response = await fetch(`/api/tasks/${encodeURIComponent(taskId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commit_message: commitMessage }),
+      });
+      if (!response.ok) {
+        throw new Error(await extractError(response));
+      }
+      const json = await response.json();
+      if (json?.snapshot) {
+        renderBoard(json.snapshot);
+        applyProjectName(json.snapshot.project_name);
+      }
+      taskDetailsCache.delete(taskId);
+      if (bodyEditorDetail && bodyEditorDetail.id === taskId) {
+        bodyEditorDetail = { ...bodyEditorDetail, commit_message: commitMessage };
+        taskDetailsCache.set(taskId, bodyEditorDetail);
+      }
+      return true;
+    } catch (error) {
+      const message =
+        (error instanceof Error ? error.message : String(error)) ||
+        "Failed to save commit message";
+      commitModalStatus.textContent = message;
+      pushNotification(message, "error", { persistent: true });
+      return false;
+    }
+  }
+
+  async function finalizeCompletion(taskId, source, detail, commitMessage) {
+    if (detail && commitMessage) {
+      detail.commit_message = commitMessage;
+    }
+
+    if (source === "modal") {
+      modalStatus.textContent = "";
+      isCompleting = true;
+      updateCompleteButton(detail || bodyEditorDetail);
+      const succeeded = await moveTask(taskId, "done", {
+        message: "Completing task…",
+        successMessage: "Task completed",
+        afterSuccess: () => {
+          taskDetailsCache.delete(taskId);
+          closeModal();
+        },
+        onError: (error) => {
+          const message =
+            (error instanceof Error ? error.message : String(error)) ||
+            "Failed to complete task";
+          modalStatus.textContent = message;
+        },
+      });
+      if (!succeeded) {
+        isCompleting = false;
+        updateCompleteButton(detail || bodyEditorDetail);
+      }
+    } else {
+      await moveTask(taskId, "done", {
+        message: "Completing task…",
+        successMessage: "Task completed",
+      });
+    }
+  }
+
   async function completeCurrentTask(taskId) {
     if (!taskId) {
       return;
     }
-    modalStatus.textContent = "";
-    isCompleting = true;
-    updateCompleteButton(bodyEditorDetail);
-    const succeeded = await moveTask(taskId, "done", {
-      message: "Completing task…",
-      successMessage: "Task completed",
-      afterSuccess: () => {
-        taskDetailsCache.delete(taskId);
-        closeModal();
-      },
-      onError: (error) => {
-        const message =
-          (error instanceof Error ? error.message : String(error)) || "Failed to complete task";
-        modalStatus.textContent = message;
-      },
-    });
-    if (!succeeded) {
-      isCompleting = false;
-      updateCompleteButton(bodyEditorDetail);
+    const detail = bodyEditorDetail ?? (await fetchTaskDetails(taskId).catch((error) => {
+      const message =
+        (error instanceof Error ? error.message : String(error)) ||
+        "Failed to load task details";
+      modalStatus.textContent = message;
+      return null;
+    }));
+    if (!detail) {
       return;
     }
-    isCompleting = false;
+    bodyEditorDetail = detail;
+    await openCommitModalForTask(taskId, "modal", detail);
   }
 
   function updateChildButtonState(detail) {

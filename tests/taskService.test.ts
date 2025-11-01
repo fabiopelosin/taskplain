@@ -87,6 +87,7 @@ describe("TaskService.move", () => {
         state: "done",
         priority: "normal",
         parent: epic.meta.id,
+        commit_message: "chore(test): seed done story [Task:done-story]",
       });
       const taskBacklog = await service.newTask({
         title: "Idea Task",
@@ -263,6 +264,15 @@ describe("TaskService.move", () => {
         priority: "normal",
       });
 
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {
+          commit_message: "chore(test): finish reports [Task:finish-reports]",
+        },
+        unset: [],
+        sections: {},
+      });
+
       const previousPath = task.path;
       const result = await service.move(task.meta.id, "done");
 
@@ -294,6 +304,15 @@ describe("TaskService.move", () => {
         priority: "normal",
       });
 
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {
+          commit_message: "chore(test): dry run [Task:dry-run-task]",
+        },
+        unset: [],
+        sections: {},
+      });
+
       const originalPath = task.path;
       const result = await service.move(task.meta.id, "done", { dryRun: true });
 
@@ -323,6 +342,7 @@ describe("TaskService.move", () => {
         kind: "task",
         state: "done",
         priority: "normal",
+        commit_message: "chore(test): already done [Task:already-done]",
       });
 
       const moved = await service.move(completed.meta.id, "ready");
@@ -398,6 +418,15 @@ describe("TaskService.complete", () => {
         priority: "high",
       });
 
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {
+          commit_message: "feat(test): complete coverage [Task:complete-coverage]",
+        },
+        unset: [],
+        sections: {},
+      });
+
       const result = await service.complete(task.meta.id);
       expect(result.dryRun).toBe(false);
       expect(result.changed).toBe(true);
@@ -433,6 +462,15 @@ describe("TaskService.complete", () => {
         priority: "normal",
       });
       const originalPath = task.path;
+
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {
+          commit_message: "feat(test): preview completion [Task:preview-completion]",
+        },
+        unset: [],
+        sections: {},
+      });
 
       const preview = await service.complete(task.meta.id, { dryRun: true });
       expect(preview.dryRun).toBe(true);
@@ -486,6 +524,7 @@ describe("TaskService.complete", () => {
         kind: "task",
         state: "done",
         priority: "normal",
+        commit_message: "chore(test): already finished [Task:already-finished]",
       });
 
       const result = await service.complete(task.meta.id);
@@ -520,6 +559,7 @@ describe("TaskService.newTask", () => {
         kind: "story",
         state: "done",
         priority: "high",
+        commit_message: "feat(test): completed story fixture [Task:ship-completed-story]",
       });
 
       const expectedRelativePath = path.join(
@@ -1020,6 +1060,7 @@ describe("TaskService.block and unblock", () => {
         kind: "task",
         state: "done",
         priority: "normal",
+        commit_message: "chore(test): done item [Task:done-item]",
       });
 
       await service.block(task.meta.id, "post-release note");

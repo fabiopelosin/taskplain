@@ -3,6 +3,7 @@ id: report-dev-build-version-when-running-from-repo
 title: Report dev build version when running from repo
 kind: task
 state: done
+commit_message: "chore(cli): report dev build version when running from repo [Task:local-version]"
 priority: normal
 size: small
 ambiguity: low

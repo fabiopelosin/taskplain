@@ -163,6 +163,7 @@ const UPDATE_META_FIELDS = [
   "labels",
   "state",
   "blocked",
+  "commit_message",
   "links",
   "size",
   "ambiguity",
@@ -183,6 +184,7 @@ const UNSET_ALLOWED_META = new Set<UpdateMetaField>([
   "labels",
   "links",
   "blocked",
+  "commit_message",
   "touches",
   "depends_on",
   "blocks",
@@ -1125,6 +1127,13 @@ function parseMetaValue(key: UpdateMetaField, raw: string): TaskMeta[UpdateMetaF
     }
     case "blocked": {
       return raw as TaskMeta["blocked"];
+    }
+    case "commit_message": {
+      const value = raw.trim();
+      if (value.length === 0) {
+        throw new Error("commit_message cannot be empty");
+      }
+      return value as TaskMeta["commit_message"];
     }
     case "links": {
       return parseLinks(raw);

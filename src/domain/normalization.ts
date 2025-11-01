@@ -44,6 +44,7 @@ const KNOWN_KEYS = new Set<string>([
   "state",
   "priority",
   "blocked",
+  "commit_message",
   "size",
   "ambiguity",
   "executor",
@@ -100,6 +101,7 @@ export function normalizeMetaInput(data: Record<string, unknown>): NormalizeMeta
   }
 
   normalizeBlocked(next, warnings);
+  normalizeCommitMessage(next, warnings);
 
   if (typeof next.labels === "string") {
     const trimmed = (next.labels as string).trim();
@@ -240,6 +242,56 @@ function normalizeBlocked(meta: Record<string, unknown>, warnings: Normalization
   }
 
   // Leave value as is to trigger schema validation error downstream.
+}
+
+function normalizeCommitMessage(
+  meta: Record<string, unknown>,
+  warnings: NormalizationWarning[],
+): void {
+  if (!Object.hasOwn(meta, "commit_message")) {
+    return;
+  }
+
+  const value = meta.commit_message;
+  if (value === undefined) {
+    delete meta.commit_message;
+    return;
+  }
+
+  if (value === null) {
+    delete meta.commit_message;
+    warnings.push({
+      code: "commit_message_null",
+      message: "commit_message was null → treated as absent",
+      field: "commit_message",
+    });
+    return;
+  }
+
+  if (typeof value !== "string") {
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    delete meta.commit_message;
+    warnings.push({
+      code: "commit_message_empty",
+      message: "commit_message was blank and removed",
+      field: "commit_message",
+    });
+    return;
+  }
+
+  meta.commit_message = trimmed;
+  if (trimmed !== value) {
+    warnings.push({
+      code: "commit_message_trimmed",
+      message: "commit_message had surrounding whitespace removed",
+      field: "commit_message",
+    });
+    return;
+  }
 }
 
 function migrateLegacyDispatchFields(

@@ -26,6 +26,7 @@ function makeTask(
     depends_on: meta.depends_on ?? [],
     blocks: meta.blocks ?? [],
     blocked: meta.blocked,
+    commit_message: meta.commit_message,
     parent: meta.parent,
     children: meta.children,
     assignees: meta.assignees,
@@ -126,6 +127,7 @@ describe("NextService", () => {
       state: "done",
       priority: "normal",
       updated_at: "2025-01-01T12:00:00.000Z",
+      commit_message: "chore(test): dependency fixture [Task:dependency-done]",
     }),
     makeTask({
       id: "needs-done",

@@ -99,7 +99,7 @@ The standard task flow:
 3. **Ready** - Move to ready state when fully specified
 4. **Pickup** - Agent claims task with \`taskplain pickup\`
 5. **Work** - Implement changes described in task
-6. **Complete** - Fill Post-Implementation Insights, run \`taskplain complete\`
+6. **Complete** - Set the final subject with \`taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"\`, fill Post-Implementation Insights, run \`taskplain complete\`
 7. **Archive** - Eventually cleanup with \`taskplain cleanup\`
 
 ### State Transitions
@@ -370,6 +370,16 @@ taskplain complete fix-mobile-navbar --dry-run --output json
    - **Changelog** (required) - What shipped using Keep a Changelog verbs
    - **Decisions** (optional) - Key choices, rejected alternatives, rationale
    - **Architecture** (optional) - Notable patterns, refactors, structures
+4. Capture the final Conventional Commit subject with \`taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"\` (required for completions dated **2025-11-01** or later)
+
+\`\`\`bash
+# Set commit subject before completion
+taskplain update fix-mobile-navbar \\
+  --meta commit_message="feat(navbar): add sticky header [Task:fix-mobile-navbar]"
+
+# Automation can read the stored subject later
+yq -r '.commit_message' "tasks/30-done/2025-03-15 task-fix-mobile-navbar.md"
+\`\`\`
 
 ### Creating Follow-up Tasks
 

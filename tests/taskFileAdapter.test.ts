@@ -78,6 +78,7 @@ describe("orderTaskMeta", () => {
       priority: "high",
       kind: "story",
       state: "idea",
+      commit_message: "feat(tasks): add commit metadata  [Task:demo]",
       id: "story-canonical",
       title: "Canonical Story",
       executor: "expert",
@@ -100,6 +101,7 @@ describe("orderTaskMeta", () => {
         "title": "Canonical Story",
         "kind": "story",
         "state": "idea",
+        "commit_message": "feat(tasks): add commit metadata  [Task:demo]",
         "priority": "high",
         "size": "small",
         "ambiguity": "medium",
@@ -219,6 +221,80 @@ describe("readTaskFile", () => {
         "updated_at_missing",
       ]
     `);
+  });
+
+  it("fails validation when a done task omits commit_message", async () => {
+    const repo = await makeRepo();
+    const relPath = path.join(repo, stateDir("done"), "2025-11-02 task-missing-commit.md");
+    await fs.ensureDir(path.dirname(relPath));
+
+    const content = [
+      "---",
+      "id: task-missing-commit",
+      "title: Missing Commit",
+      "kind: task",
+      "state: done",
+      "priority: normal",
+      "created_at: 2025-11-02T07:08:09.123Z",
+      "updated_at: 2025-11-02T07:08:09.123Z",
+      "completed_at: 2025-11-02T07:08:09.123Z",
+      "last_activity_at: 2025-11-02T07:08:09.123Z",
+      "---",
+      "",
+      "## Overview",
+      "",
+      "Work finished but commit message missing.",
+      "",
+      "## Acceptance Criteria",
+      "",
+      "- [x] Placeholder",
+      "",
+      "## Technical Approach",
+      "",
+      "- Placeholder",
+    ].join("\n");
+
+    await fs.writeFile(relPath, content, "utf8");
+
+    await expect(readTaskFile(relPath)).rejects.toThrowError(
+      /commit_message is required when state is done/,
+    );
+  });
+
+  it("allows historical done tasks without commit_message before cutoff", async () => {
+    const repo = await makeRepo();
+    const relPath = path.join(repo, stateDir("done"), "2024-05-06 task-legacy.md");
+    await fs.ensureDir(path.dirname(relPath));
+
+    const content = [
+      "---",
+      "id: task-legacy",
+      "title: Legacy Done",
+      "kind: task",
+      "state: done",
+      "priority: normal",
+      "created_at: 2024-05-06T07:08:09.123Z",
+      "updated_at: 2024-05-06T07:08:09.123Z",
+      "completed_at: 2024-05-06T07:08:09.123Z",
+      "last_activity_at: 2024-05-06T07:08:09.123Z",
+      "---",
+      "",
+      "## Overview",
+      "",
+      "Legacy task predates commit_message enforcement.",
+      "",
+      "## Acceptance Criteria",
+      "",
+      "- [x] Placeholder",
+      "",
+      "## Technical Approach",
+      "",
+      "- Placeholder",
+    ].join("\n");
+
+    await fs.writeFile(relPath, content, "utf8");
+
+    await expect(readTaskFile(relPath)).resolves.toBeDefined();
   });
 });
 

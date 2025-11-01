@@ -74,6 +74,7 @@ Reusing this layout keeps concerns separated and makes it easy to port services 
 - Invoke `taskplain validate --strict` locally before committing to surface schema warnings the same way CI does.
 - Use `taskplain web` for an ephemeral board; the server derives a deterministic port per repo and tears down cleanly when the process stops.
 - Rely on `taskplain fix` and `taskplain cleanup --dry-run` to repair metadata drift and prune completed work without manual edits.
+- Before completing work, run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to populate the task's `commit_message` frontmatter; downstream automations run `yq -r '.commit_message' <task.md>` to author commits deterministically. Validation enforces this for tasks completed on or after **2025-11-01**.
 
 ## Option and UX Conventions
 

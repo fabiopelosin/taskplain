@@ -5,6 +5,13 @@ All notable changes to the Taskplain CLI will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `commit_message` frontmatter field for tasks, enforced when `state: done`, enabling automations to run `yq -r '.commit_message'` to author commits deterministically.
+- Agent handbook guidance telling operators to populate `commit_message` before completing work.
+
 ## [0.1.0] - Initial Release
 
 ### Added

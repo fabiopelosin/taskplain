@@ -10,7 +10,7 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
    - Update acceptance criteria checkboxes (`- [ ] ...`) every few minutes to show progress
    - Keep task metadata current after each logical change
    - Ensure acceptance criteria are complete before starting—fix gaps immediately
-4. **Finish task**: When all checkboxes are done, fill "Post-Implementation Insights" (Changelog, Decisions, Architecture), run `taskplain complete <id>`, then commit with `[Task:<id>]` trailer
+4. **Finish task**: When all checkboxes are done, run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to store the final subject, fill "Post-Implementation Insights" (Changelog, Decisions, Architecture), run `taskplain complete <id>`, then commit with `[Task:<id>]` trailer
 5. **Validate**: Run `taskplain validate` after manual edits to prevent schema violations
 
 **Critical Rules**
@@ -22,6 +22,7 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
 - **Never return with in-progress tasks when all acceptance criteria are checked.** Complete the task fully before responding.
 - If you discover new work during implementation, finish the current task first, then propose new tasks.
 - Set dispatch metadata when updating: `size`, `ambiguity`, `executor`, `isolation`, `touches`; keep `depends_on`/`blocks` accurate.
+- Completed tasks must include a `commit_message` frontmatter entry set via `taskplain update <id> --meta commit_message="…"` so automation can run `yq -r '.commit_message' <task.md>` when committing.
 
 **Overview**
 

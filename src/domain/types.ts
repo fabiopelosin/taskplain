@@ -43,30 +43,64 @@ export const linkSchema = z.discriminatedUnion("type", [
 
 export type Link = z.infer<typeof linkSchema>;
 
-export const taskMetaSchema = z.object({
-  id: z.string().min(1).regex(TASK_ID_REGEX),
-  title: z.string().min(1),
-  kind: z.enum(kindOrder),
-  parent: z.string().min(1).optional(),
-  children: z.array(z.string().min(1)).optional(),
-  state: z.enum(stateOrder),
-  priority: z.enum(priorityOrder),
-  assignees: z.array(z.string().min(1)).optional(),
-  labels: z.array(z.string().min(1)).optional(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
-  completed_at: z.string().datetime().nullable().optional(),
-  links: z.array(linkSchema).optional(),
-  last_activity_at: z.string().datetime().optional(),
-  size: z.enum(sizeOrder).default(defaultSize),
-  ambiguity: z.enum(ambiguityOrder).default(defaultAmbiguity),
-  executor: z.enum(executorOrder).default(defaultExecutor),
-  isolation: z.enum(isolationOrder).default(defaultIsolation),
-  blocked: z.string().optional(),
-  touches: z.array(z.string().min(1)).optional(),
-  depends_on: z.array(z.string().min(1)).optional(),
-  blocks: z.array(z.string().min(1)).optional(),
-});
+const COMMIT_MESSAGE_CUTOFF_MS = Date.parse("2025-11-01T00:00:00Z");
+
+export const taskMetaSchema = z
+  .object({
+    id: z.string().min(1).regex(TASK_ID_REGEX),
+    title: z.string().min(1),
+    kind: z.enum(kindOrder),
+    parent: z.string().min(1).optional(),
+    children: z.array(z.string().min(1)).optional(),
+    state: z.enum(stateOrder),
+    priority: z.enum(priorityOrder),
+    assignees: z.array(z.string().min(1)).optional(),
+    labels: z.array(z.string().min(1)).optional(),
+    created_at: z.string().datetime(),
+    updated_at: z.string().datetime(),
+    completed_at: z.string().datetime().nullable().optional(),
+    links: z.array(linkSchema).optional(),
+    last_activity_at: z.string().datetime().optional(),
+    size: z.enum(sizeOrder).default(defaultSize),
+    ambiguity: z.enum(ambiguityOrder).default(defaultAmbiguity),
+    executor: z.enum(executorOrder).default(defaultExecutor),
+    isolation: z.enum(isolationOrder).default(defaultIsolation),
+    blocked: z.string().optional(),
+    commit_message: z.string().min(1).optional(),
+    touches: z.array(z.string().min(1)).optional(),
+    depends_on: z.array(z.string().min(1)).optional(),
+    blocks: z.array(z.string().min(1)).optional(),
+  })
+  .superRefine((meta, ctx) => {
+    if (meta.state !== "done") {
+      return;
+    }
+
+    const completionSource =
+      (typeof meta.completed_at === "string" && meta.completed_at.length > 0
+        ? meta.completed_at
+        : undefined) ??
+      (typeof meta.updated_at === "string" && meta.updated_at.length > 0
+        ? meta.updated_at
+        : undefined);
+
+    const completionTime = completionSource ? Date.parse(completionSource) : Number.NaN;
+    const enforceCommitMessage =
+      Number.isNaN(completionTime) || completionTime >= COMMIT_MESSAGE_CUTOFF_MS;
+
+    if (!enforceCommitMessage) {
+      return;
+    }
+
+    const raw = typeof meta.commit_message === "string" ? meta.commit_message.trim() : undefined;
+    if (!raw) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "commit_message is required when state is done",
+        path: ["commit_message"],
+      });
+    }
+  });
 
 export type TaskMeta = z.infer<typeof taskMetaSchema>;
 

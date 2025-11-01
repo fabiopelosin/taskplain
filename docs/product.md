@@ -123,6 +123,7 @@ kind: epic | story | task # Hierarchy level
 state: idea | ready | in-progress | done | canceled
 priority: none | low | normal | high | urgent
 blocked: waiting on design # Optional blocker description
+commit_message: feat(cli): add list command [Task:cli-list] # Required when state is done; set with `taskplain update <id> --meta commit_message="…"`
 
 # Sizing and Dispatch
 size: tiny | small | medium | large | xl
@@ -173,6 +174,8 @@ Implementation strategy, key decisions, architectural considerations.
 -->
 
 `taskplain validate` only requires the insights heading once the task is in the `done` state; the commented scaffold lets idea/ready/in-progress work pass without manual edits.
+
+When you finish implementation, record the exact Conventional Commit subject (including the `[Task:<id>]` trailer) using `taskplain update <id> --meta commit_message="…"`. Automations read the value with `yq -r '.commit_message' <task.md>` to author the closing commit, and `taskplain validate` enforces the field for tasks completed on or after **2025-11-01**.
 ```
 
 ### Hierarchy Rules

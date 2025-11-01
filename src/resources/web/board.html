@@ -365,6 +365,43 @@
     </div>
 
     <div
+      id="commit-modal"
+      class="modal modal-secondary"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="commit-modal-title"
+    >
+      <form id="commit-modal-form" class="modal-sheet commit-form" novalidate>
+        <div class="commit-form-heading">
+          <h2 id="commit-modal-title">Commit Message</h2>
+          <p id="commit-modal-description">
+            Enter the final Conventional Commit subject, including the <code>[Task:&lt;id&gt;]</code>
+            trailer.
+          </p>
+        </div>
+        <div class="field-group">
+          <label for="commit-message-input">Commit message</label>
+          <input
+            id="commit-message-input"
+            name="commit-message-input"
+            type="text"
+            autocomplete="off"
+            required
+          />
+        </div>
+        <div class="modal-status" id="commit-modal-status"></div>
+        <div class="sheet-actions">
+          <button type="button" class="btn-secondary" id="commit-modal-cancel">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" id="commit-modal-save">
+            Save &amp; complete
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div
       id="notification-region"
       class="notification-region"
       aria-live="polite"

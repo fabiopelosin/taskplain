@@ -231,6 +231,18 @@ describe("taskplain new CLI", () => {
         cwd: tempDir,
       });
 
+      await execFileAsync(
+        "node",
+        [
+          cliPath,
+          "update",
+          "complete-flow",
+          "--meta",
+          "commit_message=feat(test): complete flow [Task:complete-flow]",
+        ],
+        { cwd: tempDir },
+      );
+
       const first = await execFileAsync(
         "node",
         [cliPath, "complete", "complete-flow", "--output", "json"],
@@ -561,10 +573,22 @@ describe("taskplain new CLI", () => {
           "--parent",
           "epic-root",
           "--state",
-          "done",
+          "ready",
         ],
         { cwd: tempDir },
       );
+      await execFileAsync(
+        "node",
+        [
+          cliPath,
+          "update",
+          "done-story",
+          "--meta",
+          "commit_message=feat(test): done story [Task:done-story]",
+        ],
+        { cwd: tempDir },
+      );
+      await execFileAsync("node", [cliPath, "move", "done-story", "done"], { cwd: tempDir });
       await execFileAsync(
         "node",
         [

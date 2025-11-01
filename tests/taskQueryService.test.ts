@@ -276,6 +276,7 @@ describe("TaskQueryService.list", () => {
         blocked: "should warn",
         created_at: BASE_TIME,
         updated_at: BASE_TIME,
+        commit_message: "chore(test): done blocked [Task:done-blocked]",
       },
       "tasks/30-done/task-done-blocked.md",
     ),

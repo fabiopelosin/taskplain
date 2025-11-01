@@ -18,6 +18,7 @@ export const META_KEY_ORDER: (keyof TaskMeta)[] = [
   "children",
   "state",
   "blocked",
+  "commit_message",
   "priority",
   "size",
   "ambiguity",

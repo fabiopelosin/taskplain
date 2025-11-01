@@ -53,6 +53,7 @@ interface BuildDocOptions {
   depends_on?: string[];
   blocks?: string[];
   path?: string;
+  commit_message?: string;
 }
 
 function buildDoc(options: BuildDocOptions): TaskDoc {
@@ -70,6 +71,12 @@ function buildDoc(options: BuildDocOptions): TaskDoc {
     executor: "standard",
     isolation: "module",
   };
+
+  if (options.state === "done") {
+    meta.completed_at = ISO;
+    meta.commit_message =
+      options.commit_message ?? `chore(test): finish ${options.id} [Task:${options.id}]`;
+  }
 
   if (options.parent !== undefined) {
     meta.parent = options.parent;

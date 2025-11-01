@@ -230,6 +230,12 @@ export class WebServerService {
         parentId = body.parent.trim();
       }
 
+      let commitMessage: string | undefined;
+      if (typeof body.commit_message === "string") {
+        const trimmed = body.commit_message.trim();
+        commitMessage = trimmed.length > 0 ? trimmed : undefined;
+      }
+
       let blockedValue: string | null | undefined;
       if ("blocked" in body) {
         if (body.blocked === null) {
@@ -251,6 +257,7 @@ export class WebServerService {
           state: stateRaw,
           priority: priorityRaw as TaskMeta["priority"],
           parent: parentId,
+          commit_message: commitMessage,
         });
         let warnings = this.taskService.drainWarnings();
         if (warnings.length > 0) {
@@ -324,6 +331,7 @@ export class WebServerService {
             ambiguity: doc.meta.ambiguity,
             executor: doc.meta.executor,
             blocked: typeof doc.meta.blocked === "string" ? doc.meta.blocked : null,
+            commit_message: doc.meta.commit_message ?? null,
             updated_at: doc.meta.updated_at,
             last_activity_at: doc.meta.last_activity_at,
             path: this.toRelativePath(doc.path),
@@ -450,6 +458,23 @@ export class WebServerService {
           return;
         }
         metaPatch.executor = normalized as TaskMeta["executor"];
+      }
+
+      if (Object.hasOwn(body, "commit_message")) {
+        const value = body.commit_message;
+        if (value === null) {
+          unset.push("commit_message");
+        } else if (typeof value === "string") {
+          const trimmed = value.trim();
+          if (trimmed.length === 0) {
+            reply.code(400).send({ error: "commit_message must be a non-empty string" });
+            return;
+          }
+          metaPatch.commit_message = trimmed as TaskMeta["commit_message"];
+        } else {
+          reply.code(400).send({ error: "commit_message must be a string or null" });
+          return;
+        }
       }
 
       if ("blocked" in body) {

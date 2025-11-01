@@ -3,6 +3,7 @@ id: no-tasks-for-questions
 title: No tasks for questions
 kind: task
 state: done
+commit_message: "docs(handbook): remind agents not to open tasks for Q&A [Task:no-tasks-for-questions]"
 priority: normal
 size: medium
 ambiguity: low
