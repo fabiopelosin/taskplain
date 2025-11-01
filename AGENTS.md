@@ -72,6 +72,7 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
 - Work on one task at a time. Handle multiple requests sequentially.
 - When asked for a change, search for existing tasks first (`taskplain list --search`). Update if exists, create new if not.
 - Task IDs must be short slugs: 1-3 lowercase words, hyphen-separated, ≤24 chars, concrete nouns (e.g., `hero-cta`, `billing-a11y`, `nav-refactor`)
+- Answer question-only requests directly; only open or update a Taskplain task if the user explicitly asks for saved work or follow-up implementation.
 - **Never return with in-progress tasks when all acceptance criteria are checked.** Complete the task fully before responding.
 - If you discover new work during implementation, finish the current task first, then propose new tasks.
 - Set dispatch metadata when updating: `size`, `ambiguity`, `executor`, `isolation`, `touches`; keep `depends_on`/`blocks` accurate.

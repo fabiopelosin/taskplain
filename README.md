@@ -20,9 +20,9 @@ Modern coding agents can work for 5-10 minutes on a task, but they need clear st
 
 **Async workflow**: Create and refine a backlog of well-specified tasks, then dispatch them to agents when ready. No more real-time back-and-forth to clarify requirements.
 
-**Parallel execution without conflicts**: Multiple agents work independently on different tasks. Task history stays in-repo forever, providing institutional memory for future work.
+**Parallel execution without conflicts**: Multiple agents work independently on different tasks. Task history stays in-repo, providing institutional memory for future work.
 
-**Tool-agnostic**: Works with any coding agent (Claude, Cursor, Aider, custom MCP servers). Git-oriented, so task history is searchable via `git log` and `grep`.
+**Tool-agnostic**: Works with any coding agent (codex, calude code, gemini cli). Git-oriented, so task history is searchable via `git log` and `grep`.
 
 ## How it Works
 
