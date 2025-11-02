@@ -11,6 +11,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 - `commit_message` frontmatter field for tasks, enforced when `state: done`, enabling automations to run `yq -r '.commit_message'` to author commits deterministically.
 - Agent handbook guidance telling operators to populate `commit_message` before completing work.
+- `pnpm fix` package script that wraps biome autofix and formatting to satisfy preflight workflows.
 
 ## [0.1.0] - Initial Release
 

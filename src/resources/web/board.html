@@ -103,6 +103,37 @@
           </div>
         </div>
         <form id="task-modal-form">
+          <div
+            id="modal-update-banner"
+            class="modal-update-banner"
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            <div class="modal-update-main">
+              <span id="modal-update-message">Task updated.</span>
+              <div class="modal-update-actions">
+                <button
+                  type="button"
+                  class="modal-update-action"
+                  id="modal-update-review"
+                  aria-expanded="false"
+                >
+                  Review updates
+                </button>
+                <button
+                  type="button"
+                  class="modal-update-action primary"
+                  id="modal-update-apply"
+                >
+                  Discard &amp; refresh
+                </button>
+              </div>
+            </div>
+            <div id="modal-update-detail" class="modal-update-detail" hidden>
+              <ul id="modal-update-list"></ul>
+            </div>
+          </div>
           <div class="modal-columns">
             <div class="modal-column modal-column-meta">
               <div class="field-group">
@@ -416,6 +447,7 @@
       src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"
       crossorigin="anonymous"
     ></script>
+    <script src="/assets/taskDiff.js" defer></script>
     <script src="/assets/board.js" defer></script>
   </body>
 </html>

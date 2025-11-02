@@ -12,8 +12,8 @@ Taskplain is a TypeScript-first CLI that favors a small, predictable toolchain s
 - **Bundler**: `tsup` compiles `src/cli.ts` and `src/index.ts` into CommonJS artifacts in `dist/` with sourcemaps and `.d.ts` files. No splitting or minification keeps output readable and debuggable.
 - **Compiler config**: `tsconfig.json` targets `ES2022`, emits declarations/maps, and skips lib checks for faster builds. Reuse this baseline so packages share the same module and emit settings.
 - **Distribution**: `package.json` exposes `dist/cli.js` through the `"bin"` map and ships TypeScript typings via `"types": "dist/index.d.ts"`. Mirror the same layout for CLIs that need programmatic access.
-- **Scripts**: Provide `pnpm build` (tsup), `pnpm dev` (tsup watch), `pnpm typecheck` (tsc --noEmit), and `pnpm test` (vitest) so developers can jump between projects without relearning commands.
-- **Linting & formatting**: `@biomejs/biome` replaces ESLint/Prettier with a single Rust-based tool for fast lint + format (`pnpm lint` delegates here).
+- **Scripts**: Provide `pnpm build` (tsup), `pnpm dev` (tsup watch), `pnpm typecheck` (tsc --noEmit), `pnpm fix` (biome write + format pass), and `pnpm test` (vitest) so developers can jump between projects without relearning commands.
+- **Linting & formatting**: `@biomejs/biome` replaces ESLint/Prettier with a single Rust-based tool for fast lint + format (`pnpm lint` delegates here, `pnpm fix` applies rewrites).
 
 ## Core Dependencies
 

@@ -15,6 +15,7 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/lint.mjs",
+    "fix": "pnpm run lint:fix && pnpm run format:write",
     "lint:fix": "biome check --write .",
     "format": "node scripts/format.mjs --check",
     "format:write": "node scripts/format.mjs",

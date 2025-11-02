@@ -85,6 +85,32 @@
   const childKindSelect = document.getElementById("child-kind");
   const childPrioritySelect = document.getElementById("child-priority");
   const notificationRegion = document.getElementById("notification-region");
+  const modalUpdateBanner = document.getElementById("modal-update-banner");
+  const modalUpdateMessage = document.getElementById("modal-update-message");
+  const modalUpdateReviewButton = document.getElementById("modal-update-review");
+  const modalUpdateApplyButton = document.getElementById("modal-update-apply");
+  const modalUpdateDetail = document.getElementById("modal-update-detail");
+  const modalUpdateList = document.getElementById("modal-update-list");
+  const diffHelpers = window.TaskplainDiff || {};
+  const _diffTaskDetails =
+    typeof diffHelpers.diffTaskDetails === "function"
+      ? diffHelpers.diffTaskDetails
+      : () => ({ changedFields: [], messages: [] });
+  const MODAL_FIELD_LABELS = {
+    title: "Title",
+    kind: "Kind",
+    state: "State",
+    priority: "Priority",
+    size: "Size",
+    ambiguity: "Ambiguity",
+    executor: "Executor",
+    blocked: "Blocked",
+    body: "Body",
+    acceptance: "Acceptance",
+    descendants: "Descendants",
+    parent: "Parent",
+    children: "Children",
+  };
   const notifications = [];
   let notificationCounter = 1;
 
@@ -118,10 +144,53 @@
   let bodyEditorDetail = null;
   let childModalParentDetail = null;
   const expandedParents = loadExpandedParents();
+  let _modalDirty = false;
+  let modalBaselineDetail = null;
+  let _modalPendingDiff = null;
+  let modalPendingRemoteUpdatedAt = null;
+  let modalRefreshInFlight = false;
+  let modalRefreshQueued = false;
+  let modalRefreshTargetUpdatedAt = null;
+  let modalLastSeenUpdatedAt = null;
+  let pollingIntervalId = null;
+  const POLLING_INTERVAL_MS = 5000;
 
   renderControls();
   loadInitial();
   connectWebSocket();
+
+  if (modalUpdateReviewButton) {
+    modalUpdateReviewButton.addEventListener("click", toggleModalUpdateDetail);
+  }
+
+  if (fieldTitle) {
+    fieldTitle.addEventListener("input", markModalDirty);
+  }
+  if (fieldBodyEdit) {
+    fieldBodyEdit.addEventListener("input", markModalDirty);
+  }
+
+  [fieldPriority, fieldSize, fieldAmbiguity, fieldExecutor, fieldKind].forEach((select) => {
+    if (select) {
+      select.addEventListener("change", markModalDirty);
+    }
+  });
+
+  modalForm.addEventListener("change", (event) => {
+    if (modalViewMode !== "edit") {
+      return;
+    }
+    const target = event.target;
+    if (
+      target === fieldPriority ||
+      target === fieldSize ||
+      target === fieldAmbiguity ||
+      target === fieldExecutor ||
+      target === fieldKind
+    ) {
+      markModalDirty();
+    }
+  });
 
   cancelButton.addEventListener("click", async () => {
     if (modalViewMode === "edit") {
@@ -349,6 +418,7 @@
 
     socket.addEventListener("open", () => {
       setConnectionStatus("Live", "ok");
+      stopPollingFallback();
     });
 
     socket.addEventListener("message", (event) => {
@@ -365,12 +435,14 @@
 
     socket.addEventListener("close", () => {
       setConnectionStatus("Reconnecting…", "warn");
+      startPollingFallback();
       setTimeout(connectWebSocket, 1500);
     });
 
     socket.addEventListener("error", (error) => {
       console.error("WebSocket error", error);
       setConnectionStatus("WebSocket error", "error");
+      startPollingFallback();
     });
   }
 
@@ -461,6 +533,7 @@
     currentSnapshot = snapshot;
     hasRenderedSnapshot = true;
     taskDetailsCache.clear();
+    handleModalSync(snapshot);
     if (snapshot?.generated_at) {
       updatedEl.textContent = `Updated ${formatTimestamp(snapshot.generated_at)}`;
     } else {
@@ -486,6 +559,291 @@
       boardEl.appendChild(empty);
     }
     persistExpandedParents();
+  }
+
+  function handleModalSync(snapshot) {
+    if (!modalTaskId || !modalEl.classList.contains("active")) {
+      _modalPendingDiff = null;
+      modalPendingRemoteUpdatedAt = null;
+      return;
+    }
+    const node = findTaskInSnapshot(snapshot, modalTaskId);
+    if (!node) {
+      handleModalTaskDeleted(modalTaskId);
+      return;
+    }
+
+    const nodeUpdatedAt = node.updated_at || null;
+    const baseline =
+      modalBaselineDetail && modalBaselineDetail.id === node.id ? modalBaselineDetail : null;
+    const hasSnapshotDiff = baseline ? modalSnapshotDiffersFromBaseline(node, baseline) : true;
+
+    if (nodeUpdatedAt && modalLastSeenUpdatedAt && nodeUpdatedAt === modalLastSeenUpdatedAt) {
+      if (!hasSnapshotDiff) {
+        return;
+      }
+    } else if (!nodeUpdatedAt && !hasSnapshotDiff) {
+      return;
+    }
+
+    scheduleModalDetailRefresh(nodeUpdatedAt);
+  }
+
+  function modalSnapshotDiffersFromBaseline(node, baseline) {
+    if (!baseline || baseline.id !== node.id) {
+      return true;
+    }
+
+    const compareText = (value) => (value === undefined || value === null ? "" : String(value));
+    if (compareText(baseline.title) !== compareText(node.title)) {
+      return true;
+    }
+    if (compareText(baseline.kind) !== compareText(node.kind)) {
+      return true;
+    }
+    if (compareText(baseline.state) !== compareText(node.state)) {
+      return true;
+    }
+    if (compareText(baseline.priority) !== compareText(node.priority)) {
+      return true;
+    }
+
+    const baselineBlocked = compareText(baseline.blocked);
+    const nodeBlocked = compareText(node.blocked);
+    if (baselineBlocked !== nodeBlocked) {
+      return true;
+    }
+
+    const baselineAcceptance = baseline.acceptance || null;
+    const nodeAcceptance = node.acceptance || null;
+    const baselineAcceptanceCompleted =
+      baselineAcceptance && typeof baselineAcceptance.completed === "number"
+        ? baselineAcceptance.completed
+        : null;
+    const nodeAcceptanceCompleted =
+      nodeAcceptance && typeof nodeAcceptance.completed === "number"
+        ? nodeAcceptance.completed
+        : null;
+    const baselineAcceptanceTotal =
+      baselineAcceptance && typeof baselineAcceptance.total === "number"
+        ? baselineAcceptance.total
+        : null;
+    const nodeAcceptanceTotal =
+      nodeAcceptance && typeof nodeAcceptance.total === "number" ? nodeAcceptance.total : null;
+    if (
+      baselineAcceptanceCompleted !== nodeAcceptanceCompleted ||
+      baselineAcceptanceTotal !== nodeAcceptanceTotal
+    ) {
+      return true;
+    }
+
+    const baselineFamily = baseline.family || null;
+    const nodeFamily = node.family || null;
+    if (!!baselineFamily !== !!nodeFamily) {
+      return true;
+    }
+    if (baselineFamily && nodeFamily) {
+      const baselineParentId = baselineFamily.parent ? baselineFamily.parent.id : null;
+      const nodeParentId = nodeFamily.parent ? nodeFamily.parent.id : null;
+      if (baselineParentId !== nodeParentId) {
+        return true;
+      }
+      const baselineChildCount =
+        typeof baselineFamily.child_count === "number" ? baselineFamily.child_count : null;
+      const nodeChildCount =
+        typeof nodeFamily.child_count === "number" ? nodeFamily.child_count : null;
+      if (baselineChildCount !== nodeChildCount) {
+        return true;
+      }
+      const baselineBreakdown = baselineFamily.breakdown || {};
+      const nodeBreakdown = nodeFamily.breakdown || {};
+      if (JSON.stringify(baselineBreakdown) !== JSON.stringify(nodeBreakdown)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function scheduleModalDetailRefresh(updatedAt) {
+    if (!modalTaskId) {
+      return;
+    }
+    modalRefreshTargetUpdatedAt = updatedAt;
+    if (modalRefreshInFlight) {
+      modalRefreshQueued = true;
+      return;
+    }
+    modalRefreshInFlight = true;
+    void refreshModalDetail();
+  }
+
+  async function refreshModalDetail() {
+    if (!modalTaskId) {
+      modalRefreshInFlight = false;
+      return;
+    }
+    const target = modalRefreshTargetUpdatedAt;
+    try {
+      const detail = await fetchTaskDetails(modalTaskId);
+      if (!detail) {
+        return;
+      }
+      const detailUpdatedAt = detail.updated_at || null;
+      if (target && detailUpdatedAt && target !== detailUpdatedAt) {
+        modalRefreshTargetUpdatedAt = detailUpdatedAt;
+      }
+      applyModalRemoteDetail(detail);
+    } catch (error) {
+      console.error("Failed to refresh modal detail", error);
+    } finally {
+      modalRefreshInFlight = false;
+      if (modalRefreshQueued) {
+        modalRefreshQueued = false;
+        scheduleModalDetailRefresh(modalRefreshTargetUpdatedAt);
+      }
+    }
+  }
+
+  function applyModalRemoteDetail(detail) {
+    if (!detail) {
+      return;
+    }
+    _modalPendingDiff = null;
+    modalPendingRemoteUpdatedAt = detail.updated_at || null;
+    hideModalUpdateBanner();
+    populateModal(detail);
+    setModalViewMode("view");
+  }
+
+  function _formatChangedFields(fields) {
+    if (!Array.isArray(fields) || fields.length === 0) {
+      return "";
+    }
+    const readable = fields.map((field) =>
+      MODAL_FIELD_LABELS[field] ? MODAL_FIELD_LABELS[field] : field,
+    );
+    if (readable.length === 1) {
+      return readable[0];
+    }
+    return `${readable.slice(0, -1).join(", ")} and ${readable[readable.length - 1]}`;
+  }
+
+  function _showModalUpdateBanner(diff, detail) {
+    if (!modalUpdateBanner || !modalUpdateMessage) {
+      return;
+    }
+    const fields = Array.isArray(diff?.changedFields) ? diff.changedFields : [];
+    const messages = Array.isArray(diff?.messages) ? diff.messages : [];
+    const summary = _formatChangedFields(fields);
+    modalUpdateMessage.textContent =
+      summary.length > 0
+        ? `Task updated externally. Updated fields: ${summary}.`
+        : "Task updated externally. Review the latest details.";
+    modalUpdateBanner.hidden = false;
+    modalUpdateBanner.setAttribute("data-task-id", detail?.id || "");
+    if (modalUpdateApplyButton) {
+      modalUpdateApplyButton.disabled = false;
+    }
+    if (modalUpdateReviewButton) {
+      const hasDetails = messages.length > 0;
+      modalUpdateReviewButton.disabled = !hasDetails;
+      modalUpdateReviewButton.setAttribute("aria-expanded", "false");
+    }
+    if (modalUpdateDetail) {
+      modalUpdateDetail.hidden = true;
+    }
+    if (modalUpdateList) {
+      modalUpdateList.innerHTML = "";
+      messages.forEach((message) => {
+        const item = document.createElement("li");
+        item.textContent = message;
+        modalUpdateList.appendChild(item);
+      });
+    }
+  }
+
+  function hideModalUpdateBanner() {
+    if (!modalUpdateBanner) {
+      return;
+    }
+    modalUpdateBanner.hidden = true;
+    modalUpdateBanner.removeAttribute("data-task-id");
+    if (modalUpdateReviewButton) {
+      modalUpdateReviewButton.setAttribute("aria-expanded", "false");
+      modalUpdateReviewButton.disabled = false;
+    }
+    if (modalUpdateDetail) {
+      modalUpdateDetail.hidden = true;
+    }
+    if (modalUpdateList) {
+      modalUpdateList.innerHTML = "";
+    }
+  }
+
+  function toggleModalUpdateDetail() {
+    if (!modalUpdateDetail || !modalUpdateReviewButton || modalUpdateReviewButton.disabled) {
+      return;
+    }
+    const expanded = modalUpdateReviewButton.getAttribute("aria-expanded") === "true";
+    const next = !expanded;
+    modalUpdateReviewButton.setAttribute("aria-expanded", next ? "true" : "false");
+    modalUpdateDetail.hidden = !next;
+  }
+
+  function markModalDirty() {
+    if (modalViewMode !== "edit") {
+      return;
+    }
+    _modalDirty = true;
+  }
+
+  function handleModalTaskDeleted(taskId) {
+    if (!taskId) {
+      return;
+    }
+    if (modalTaskId !== taskId) {
+      return;
+    }
+    closeModal();
+    pushNotification("Task removed while viewing. Modal closed.", "warning", {
+      persistent: true,
+    });
+  }
+
+  async function pollSnapshot() {
+    try {
+      const response = await fetch("/api/tasks");
+      if (!response.ok) {
+        throw new Error("Failed to poll tasks");
+      }
+      const payload = await response.json();
+      if (!payload) {
+        return;
+      }
+      if (!currentSnapshot || payload.generated_at !== currentSnapshot.generated_at) {
+        renderBoard(payload);
+        applyProjectName(payload.project_name);
+      }
+    } catch (error) {
+      console.error("Polling fallback failed", error);
+    }
+  }
+
+  function startPollingFallback() {
+    if (pollingIntervalId !== null) {
+      return;
+    }
+    pollingIntervalId = window.setInterval(pollSnapshot, POLLING_INTERVAL_MS);
+    void pollSnapshot();
+  }
+
+  function stopPollingFallback() {
+    if (pollingIntervalId === null) {
+      return;
+    }
+    window.clearInterval(pollingIntervalId);
+    pollingIntervalId = null;
   }
 
   function buildColumn(state, tasks) {
@@ -727,8 +1085,7 @@
   async function handleDropCompletion(taskId) {
     const detail = await fetchTaskDetails(taskId).catch((error) => {
       const message =
-        (error instanceof Error ? error.message : String(error)) ||
-        "Failed to prepare completion";
+        (error instanceof Error ? error.message : String(error)) || "Failed to prepare completion";
       setActivityStatus(message, "error");
       pushNotification(message, "error", { persistent: true });
       return null;
@@ -895,6 +1252,16 @@
     modalViewMode = mode;
     const isEditing = mode === "edit";
 
+    if (isEditing) {
+      _modalDirty = false;
+    } else {
+      _modalDirty = false;
+      if (modalBaselineDetail) {
+        modalLastSeenUpdatedAt = modalBaselineDetail.updated_at || modalLastSeenUpdatedAt;
+      }
+      hideModalUpdateBanner();
+    }
+
     fieldTitle.readOnly = !isEditing;
     fieldPriority.disabled = !isEditing;
     fieldSize.disabled = !isEditing;
@@ -949,6 +1316,11 @@
   }
 
   function populateModal(detail) {
+    modalBaselineDetail = detail;
+    modalLastSeenUpdatedAt = detail.updated_at || null;
+    modalPendingRemoteUpdatedAt = null;
+    _modalDirty = false;
+    hideModalUpdateBanner();
     modalTitle.textContent = detail.title;
     fieldTitle.value = detail.title || "";
     fieldPriority.value = detail.priority;
@@ -1325,8 +1697,7 @@
       return true;
     } catch (error) {
       const message =
-        (error instanceof Error ? error.message : String(error)) ||
-        "Failed to save commit message";
+        (error instanceof Error ? error.message : String(error)) || "Failed to save commit message";
       commitModalStatus.textContent = message;
       pushNotification(message, "error", { persistent: true });
       return false;
@@ -1351,8 +1722,7 @@
         },
         onError: (error) => {
           const message =
-            (error instanceof Error ? error.message : String(error)) ||
-            "Failed to complete task";
+            (error instanceof Error ? error.message : String(error)) || "Failed to complete task";
           modalStatus.textContent = message;
         },
       });
@@ -1372,13 +1742,14 @@
     if (!taskId) {
       return;
     }
-    const detail = bodyEditorDetail ?? (await fetchTaskDetails(taskId).catch((error) => {
-      const message =
-        (error instanceof Error ? error.message : String(error)) ||
-        "Failed to load task details";
-      modalStatus.textContent = message;
-      return null;
-    }));
+    const detail =
+      bodyEditorDetail ??
+      (await fetchTaskDetails(taskId).catch((error) => {
+        const message =
+          (error instanceof Error ? error.message : String(error)) || "Failed to load task details";
+        modalStatus.textContent = message;
+        return null;
+      }));
     if (!detail) {
       return;
     }
@@ -1695,6 +2066,7 @@
     closeBlockModal();
     closeDeleteModal();
     closeChildModal();
+    hideModalUpdateBanner();
     modalTaskId = null;
     modalMode = "edit";
     modalViewMode = "view";
@@ -1707,6 +2079,11 @@
     fieldKind.disabled = true;
     fieldTitle.readOnly = false;
     modalStatus.textContent = "";
+    _modalDirty = false;
+    modalBaselineDetail = null;
+    _modalPendingDiff = null;
+    modalPendingRemoteUpdatedAt = null;
+    modalLastSeenUpdatedAt = null;
     updateCompleteButton(null);
     document.body.classList.remove("modal-open");
     modalBackdrop.classList.remove("active");
@@ -2417,13 +2794,20 @@ function updateScaleLabel(field, value) {
   ctrl.labelEl.textContent = text;
 }
 
-function setScaleValue(field, value) {
+function setScaleValue(field, value, options = {}) {
   const ctrl = scaleControls.get(field);
   if (!ctrl) return;
   const idx = ctrl.values.indexOf(value);
   if (idx === -1) return;
   // Update hidden select
-  if (ctrl.selectEl) ctrl.selectEl.value = value;
+  if (ctrl.selectEl) {
+    const previous = ctrl.selectEl.value;
+    ctrl.selectEl.value = value;
+    if (options.triggerChange && previous !== value) {
+      const changeEvent = new Event("change", { bubbles: true });
+      ctrl.selectEl.dispatchEvent(changeEvent);
+    }
+  }
   // Update visual
   ctrl.options.forEach((opt, i) => {
     opt.classList.toggle("active", i === idx);
@@ -2459,11 +2843,11 @@ function initScaleControls() {
       div.dataset.index = String(i);
       div.dataset.value = val;
       div.title = prettyValue(field, val);
-      div.addEventListener("click", () => setScaleValue(field, val));
+      div.addEventListener("click", () => setScaleValue(field, val, { triggerChange: true }));
       div.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          setScaleValue(field, val);
+          setScaleValue(field, val, { triggerChange: true });
         }
       });
       sliderEl.appendChild(div);

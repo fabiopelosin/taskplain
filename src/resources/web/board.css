@@ -1249,10 +1249,107 @@ main {
 /* Layout the form so columns take the free space and status/actions stay fixed */
 #task-modal-form {
   display: grid;
-  grid-template-rows: 1fr auto auto;
-  gap: 0;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 0.75rem;
   min-height: 0;
   padding-right: 0; /* ensure no container right padding interferes with scroller */
+}
+
+.modal-update-banner {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 118, 110, 0.12);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  margin: 0 1.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  color: #d1fae5;
+}
+
+.modal-update-banner[hidden] {
+  display: none;
+}
+
+.modal-update-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.modal-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.modal-update-action {
+  border: 1px solid rgba(15, 118, 110, 0.4);
+  background: rgba(15, 118, 110, 0.4);
+  color: #ecfeff;
+  padding: 0.35rem 0.8rem;
+  border-radius: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.1s ease;
+}
+
+.modal-update-action.primary {
+  background: rgba(14, 165, 233, 0.85);
+  border-color: rgba(14, 165, 233, 0.85);
+  color: #0f172a;
+}
+
+.modal-update-action:focus-visible {
+  outline: 2px solid #bae6fd;
+  outline-offset: 2px;
+}
+
+.modal-update-action:hover {
+  background: rgba(15, 118, 110, 0.55);
+  border-color: rgba(15, 118, 110, 0.55);
+}
+
+.modal-update-action.primary:hover {
+  background: rgba(2, 132, 199, 0.95);
+  border-color: rgba(2, 132, 199, 0.95);
+}
+
+.modal-update-action:disabled,
+.modal-update-action[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.modal-update-action:active {
+  transform: translateY(1px);
+}
+
+.modal-update-detail {
+  border-top: 1px solid rgba(148, 163, 184, 0.3);
+  padding-top: 0.65rem;
+}
+
+.modal-update-detail[hidden] {
+  display: none;
+}
+
+.modal-update-detail ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.modal-update-detail li {
+  margin-bottom: 0.25rem;
 }
 
 .body-preview {
