@@ -34,6 +34,7 @@ export const META_KEY_ORDER: (keyof TaskMeta)[] = [
   "completed_at",
   "links",
   "last_activity_at",
+  "execution",
 ];
 
 export function orderTaskMeta(meta: TaskMeta): TaskMeta {
@@ -116,6 +117,28 @@ function normalizeMeta(data: Record<string, unknown>): Record<string, unknown> {
       }
       if (value === null && key === "completed_at") {
         copy[key] = null;
+      }
+    }
+  }
+
+  const execution = copy.execution;
+  if (execution && typeof execution === "object" && Array.isArray((execution as any).attempts)) {
+    const attempts = (execution as any).attempts as Array<Record<string, unknown>>;
+    for (const attempt of attempts) {
+      if (attempt && typeof attempt === "object") {
+        for (const field of ["started_at", "ended_at"]) {
+          const value = attempt[field];
+          if (value instanceof Date) {
+            attempt[field] = value.toISOString();
+          }
+        }
+        const reviewer = attempt.reviewer;
+        if (reviewer && typeof reviewer === "object") {
+          const reviewedAt = (reviewer as Record<string, unknown>).reviewed_at;
+          if (reviewedAt instanceof Date) {
+            (reviewer as Record<string, unknown>).reviewed_at = reviewedAt.toISOString();
+          }
+        }
       }
     }
   }

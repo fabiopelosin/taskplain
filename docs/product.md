@@ -18,8 +18,13 @@ Conversational loops with AI agents burn tokens and time because every participa
 **Opaque Agent Sessions**
 Long-running agent sessions can implement multiple changes without clear documentation of what was attempted, what succeeded, and what decisions were made. Without structured checkpoints, humans lose visibility into agent work until it's completed.
 
+**Inefficient Agent Routing**
+Orchestration systems dispatch tasks to agents without learning from historical performance. The same expensive, capable model handles trivial tasks while faster models sit idle. Success rates, retry patterns, and execution times remain invisible, forcing operators to guess at optimal routing strategies.
+
 **Solution**
 Taskplain keeps tasks as Markdown files in your repository, making context accurate, reviewable in PRs, and efficiently accessible through deterministic CLI commands and JSON output. Agents document their plans in task files BEFORE coding (Overview, Acceptance Criteria, Technical Approach) and summarize their work AFTER completion (Post-Implementation Insights). This creates natural checkpoints where humans can review what will be dispatched and audit what was accomplished in multi-task sessions.
+
+Taskplain records execution telemetry (duration, attempts, model used, status) in task frontmatter, creating a performance dataset for orchestration systems. Track which models succeed on which task types, measure actual versus estimated effort, and optimize agent routing based on learned patterns—all while keeping the data in-repo and version-controlled.
 
 ## Core Principles
 
@@ -47,6 +52,7 @@ Fast local operations. `validate` runs in milliseconds, `list` and `tree` are in
 - **Complete CLI** with all core task lifecycle commands
 - **Deterministic automation** via stable JSON output and idempotent operations
 - **Parallel agent execution** with conflict-aware task dispatch (`touches` checking)
+- **Execution telemetry** for tracking agent performance and optimizing routing
 - **Local Kanban board** (`taskplain web`) for visual task management
 - **Git integration** for moves, staging, and commit trailer generation
 - **Fast validation** with auto-fix capabilities
@@ -57,7 +63,7 @@ Fast local operations. `validate` runs in milliseconds, `list` and `tree` are in
 - Hosted services or persistent daemons (web server is ephemeral, local-only)
 - Bidirectional sync with external issue trackers (GitHub, Linear, Jira)
 - Monorepo support (single `tasks/` directory per repo)
-- Automated task size estimation or time tracking
+- Built-in agent routing or task estimation (Taskplain stores data, consumers analyze and act)
 - Custom workflows or state machines (fixed states only)
 
 ---
@@ -125,11 +131,42 @@ priority: none | low | normal | high | urgent
 blocked: waiting on design # Optional blocker description
 commit_message: feat(cli): add list command [Task:cli-list] # Required when state is done; set with `taskplain update <id> --meta commit_message="…"`
 
-# Sizing and Dispatch
-size: tiny | small | medium | large | xl
-ambiguity: low | medium | high
-executor: simple | standard | expert | human_review
-isolation: isolated | module | shared | global
+# Dispatch Metadata (planning phase)
+size: tiny | small | medium | large | xl # Estimated effort
+ambiguity: low | medium | high # Uncertainty level
+executor: simple | standard | expert | human_review # Required capability
+isolation: isolated | module | shared | global # Scope of changes
+
+# Execution Metadata (runtime phase, optional)
+execution:
+  attempts:
+    - started_at: 2025-11-02T15:03:00.000Z
+      ended_at: 2025-11-02T15:05:00.000Z
+      duration_seconds: 120
+      status: failed
+      error_reason: "TypeError: Cannot read property 'foo' of undefined"
+      executor:
+        tool: claude-code
+        model: claude-sonnet-4-20250514
+    - started_at: 2025-11-02T15:06:25.000Z
+      ended_at: 2025-11-02T15:08:00.000Z
+      duration_seconds: 95
+      status: failed
+      error_reason: "AssertionError: Expected 200, got 404"
+      executor:
+        tool: claude-code
+        model: claude-sonnet-4-20250514
+    - started_at: 2025-11-02T15:10:00.000Z
+      ended_at: 2025-11-02T15:12:45.000Z
+      duration_seconds: 165
+      status: completed
+      executor:
+        tool: claude-code
+        model: claude-sonnet-4-20250514
+      reviewer: # Optional human review
+        name: fabio
+        approved: true
+        reviewed_at: 2025-11-02T15:15:00.000Z
 
 # Relationships
 children: [story-copy, story-assets] # Ordered child IDs
@@ -210,6 +247,46 @@ The `taskplain next` command ranks tasks by:
 Only `ready`-state tasks enter the ranking pool; use `taskplain list --state in-progress` when you need to recover active work.
 
 **Conflict detection:** Tasks with overlapping `touches` globs cannot run in parallel unless forced.
+
+### Execution Telemetry
+
+Taskplain enables data-driven agent orchestration by recording execution metadata in task frontmatter. This creates a holistic feedback loop:
+
+**Planning Phase** (set before pickup):
+- `size`, `ambiguity`, `executor`, `isolation` — estimates and requirements
+
+**Execution Phase** (recorded by orchestration system):
+- `execution.attempts[]` — array of execution attempts (one per fix iteration) with:
+  - `started_at` + `ended_at` + `duration_seconds` — timing data per attempt
+  - `executor.tool` + `executor.model` — which agent/model executed this attempt
+  - `status` — completed, failed, or abandoned
+  - `error_reason` — error description when status is failed (optional)
+  - `reviewer` — optional human review metadata
+
+**Analysis Phase** (consumer responsibility):
+- Query completed tasks via `taskplain list --state done --output json`
+- Analyze patterns: model × ambiguity → success rate
+- Track actual vs estimated duration by size
+- Measure attempts needed: how often tasks complete in one shot vs multiple tries
+
+**Optimization Phase** (consumer responsibility):
+- Route high ambiguity tasks to more capable models
+- Prefer faster/cheaper models for low ambiguity work
+- Adjust task estimates based on historical data
+- Parallelize based on isolation patterns
+
+**Design Principles**:
+- Taskplain stores data, consumers analyze and optimize
+- Execution metadata is optional—doesn't block task completion
+- Schema aligns with dispatch metadata for coherent planning → execution → analysis flow
+- All data stays in-repo, version-controlled, and queryable via CLI
+
+**Telemetry Semantics**:
+- **Attempt**: One complete agent execution session from start to end
+- **Retry count**: `attempts.length - 1` (first attempt is not a retry)
+- **Total execution time**: Sum of all `duration_seconds` values
+- **Wall-clock time**: `last_ended_at - first_started_at`
+- **Idle time**: Wall-clock time minus total execution time (time between attempts)
 
 ### Continuous Integration
 
@@ -304,6 +381,53 @@ taskplain pickup $TASK --output json
 # Validate and complete
 taskplain validate $TASK --strict
 taskplain complete $TASK
+```
+
+### Example Workflow with Execution Telemetry
+
+```bash
+# Orchestration system starts task execution
+TASK_ID="hero-refresh"
+START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+AGENT_TOOL="claude-code"
+AGENT_MODEL="claude-sonnet-4-20250514"
+
+# Execute work...
+# ... agent performs implementation ...
+# This represents one attempt; if it fails, run this workflow again to create a new attempt
+
+# Record execution attempt
+END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+DURATION=$(( $(date -d "$END_TIME" +%s) - $(date -d "$START_TIME" +%s) ))
+
+# Build attempt JSON
+ATTEMPT=$(jq -n \
+  --arg started "$START_TIME" \
+  --arg ended "$END_TIME" \
+  --argjson duration "$DURATION" \
+  --arg status "completed" \
+  --arg tool "$AGENT_TOOL" \
+  --arg model "$AGENT_MODEL" \
+  '{
+    started_at: $started,
+    ended_at: $ended,
+    duration_seconds: $duration,
+    status: $status,
+    executor: {tool: $tool, model: $model}
+  }')
+
+# Append to task's execution.attempts array
+# (Implementation details depend on your orchestration system)
+# Example: Use yq to manipulate YAML, then update task file
+
+# Later: Query historical data to optimize routing
+taskplain list --state done --output json | \
+  jq -r '.[] | select(.execution and .ambiguity == "low") |
+    .execution.attempts[-1] |
+    select(.status == "completed") |
+    [.executor.model, .duration_seconds] | @tsv' | \
+  awk '{sum[$1]+=$2; count[$1]++}
+       END {for (m in sum) printf "%s: avg %.0fs\n", m, sum[m]/count[m]}'
 ```
 
 ---

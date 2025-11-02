@@ -20,13 +20,44 @@ type TaskDetail = {
   } | null;
 };
 
-async function loadDiff() {
+type DiffTaskDetails = (
+  previous: TaskDetail,
+  next: TaskDetail,
+) => { changedFields: string[]; messages: string[] };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isDiffTaskDetails(value: unknown): value is DiffTaskDetails {
+  return typeof value === "function";
+}
+
+function resolveDiffTaskDetails(mod: unknown): DiffTaskDetails | undefined {
+  if (!isRecord(mod)) {
+    return undefined;
+  }
+
+  const direct = mod.diffTaskDetails;
+  if (isDiffTaskDetails(direct)) {
+    return direct;
+  }
+
+  const maybeDefault = mod.default;
+  if (isRecord(maybeDefault) && isDiffTaskDetails(maybeDefault.diffTaskDetails)) {
+    return maybeDefault.diffTaskDetails;
+  }
+
+  return undefined;
+}
+
+async function loadDiff(): Promise<DiffTaskDetails> {
   const mod = await import("../src/resources/web/taskDiff.js");
-  const api = (mod as any).diffTaskDetails ? mod : (mod as any).default ? (mod as any).default : {};
-  return (api as any).diffTaskDetails as (
-    previous: TaskDetail,
-    next: TaskDetail,
-  ) => { changedFields: string[]; messages: string[] };
+  const diffTaskDetails = resolveDiffTaskDetails(mod);
+  if (!diffTaskDetails) {
+    throw new Error("diffTaskDetails export missing");
+  }
+  return diffTaskDetails;
 }
 
 describe("diffTaskDetails", () => {

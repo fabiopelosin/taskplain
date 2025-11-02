@@ -22,7 +22,9 @@ Modern coding agents can work for 5-10 minutes on a task, but they need clear st
 
 **Parallel execution without conflicts**: Multiple agents work independently on different tasks. Task history stays in-repo, providing institutional memory for future work.
 
-**Tool-agnostic**: Works with any coding agent (codex, calude code, gemini cli). Git-oriented, so task history is searchable via `git log` and `grep`.
+**Execution telemetry**: Track which models and tools work best for different task types. Taskplain records runtime data (attempts, duration, model used, status) in task files, enabling your orchestration system to learn optimal agent-to-task routing patterns.
+
+**Tool-agnostic**: Works with any coding agent (codex, claude code, gemini cli). Git-oriented, so task history is searchable via `git log` and `grep`.
 
 ## How it Works
 
@@ -111,12 +113,18 @@ tasks/
 
 Tasks move through folders as they progress. Each file contains metadata for smart dispatching:
 
-- `size`: tiny/small/medium/large/xl
-- `priority`: none/low/normal/high/urgent
+**Planning metadata** (set before execution):
+- `size`: tiny/small/medium/large/xl — estimated effort
+- `priority`: none/low/normal/high/urgent — urgency level
+- `ambiguity`: low/medium/high — uncertainty in requirements
+- `executor`: simple/standard/expert/human_review — required capability
+- `isolation`: isolated/module/shared/global — scope of changes
 - `depends_on`: other task IDs that must complete first
-- `executor`: simple/standard/expert/human_review
-- `isolation`: isolated/module/shared/global
 - `touches`: glob patterns describing the code it modifies
+
+**Execution metadata** (recorded during work, optional):
+- `execution.attempts[]`: array of execution attempts with duration, model used, and status
+- Enables orchestration systems to analyze performance patterns and optimize agent routing
 
 ## Integration Examples
 
@@ -131,6 +139,28 @@ while IFS= read -r task_id; do
 done < <(taskplain next --parallelize 3)
 
 wait
+```
+
+### Learning from Execution History
+
+Your orchestration system can analyze execution data to optimize agent routing:
+
+```bash
+# Query completed tasks to analyze performance patterns
+taskplain list --state done --output json | \
+  jq -r '.[] | select(.execution) |
+    .execution.attempts[-1] |
+    [.executor.model, .duration_seconds, .status] | @tsv'
+
+# Example output:
+# claude-sonnet-4-20250514    765    completed
+# claude-sonnet-3-5-20241022  1420   failed
+# claude-sonnet-4-20250514    890    completed
+
+# Use this data to route tasks based on learned patterns:
+# - High ambiguity tasks → more capable models
+# - Simple tasks → faster/cheaper models
+# - Track success rates by model × ambiguity combinations
 ```
 
 ### With CI/CD

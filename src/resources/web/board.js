@@ -147,7 +147,7 @@
   let _modalDirty = false;
   let modalBaselineDetail = null;
   let _modalPendingDiff = null;
-  let modalPendingRemoteUpdatedAt = null;
+  let _modalPendingRemoteUpdatedAt = null;
   let modalRefreshInFlight = false;
   let modalRefreshQueued = false;
   let modalRefreshTargetUpdatedAt = null;
@@ -564,7 +564,7 @@
   function handleModalSync(snapshot) {
     if (!modalTaskId || !modalEl.classList.contains("active")) {
       _modalPendingDiff = null;
-      modalPendingRemoteUpdatedAt = null;
+      _modalPendingRemoteUpdatedAt = null;
       return;
     }
     const node = findTaskInSnapshot(snapshot, modalTaskId);
@@ -710,7 +710,7 @@
       return;
     }
     _modalPendingDiff = null;
-    modalPendingRemoteUpdatedAt = detail.updated_at || null;
+    _modalPendingRemoteUpdatedAt = detail.updated_at || null;
     hideModalUpdateBanner();
     populateModal(detail);
     setModalViewMode("view");
@@ -1318,7 +1318,7 @@
   function populateModal(detail) {
     modalBaselineDetail = detail;
     modalLastSeenUpdatedAt = detail.updated_at || null;
-    modalPendingRemoteUpdatedAt = null;
+    _modalPendingRemoteUpdatedAt = null;
     _modalDirty = false;
     hideModalUpdateBanner();
     modalTitle.textContent = detail.title;
@@ -2082,7 +2082,7 @@
     _modalDirty = false;
     modalBaselineDetail = null;
     _modalPendingDiff = null;
-    modalPendingRemoteUpdatedAt = null;
+    _modalPendingRemoteUpdatedAt = null;
     modalLastSeenUpdatedAt = null;
     updateCompleteButton(null);
     document.body.classList.remove("modal-open");

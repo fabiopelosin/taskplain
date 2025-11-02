@@ -168,6 +168,71 @@ describe("serializeTaskDoc", () => {
     await expect(serialized).toMatchFileSnapshot("taskFileAdapter.serialize.story.md");
     expect(serialized.endsWith("\n")).toBe(true);
   });
+
+  it("normalizes Date instances nested in execution metadata", async () => {
+    const created = new Date("2025-11-03T01:02:03.000Z");
+    const attemptStart = new Date("2025-11-03T01:10:00.000Z");
+    const attemptEnd = new Date("2025-11-03T01:15:00.000Z");
+    const reviewTime = new Date("2025-11-03T01:20:00.000Z");
+
+    const repo = await makeRepo();
+    const filePath = path.join(
+      repo,
+      stateDir("in-progress"),
+      "task-task-datetime-normalization.md",
+    );
+    await fs.ensureDir(path.dirname(filePath));
+
+    const doc = {
+      meta: {
+        id: "task-datetime-normalization",
+        title: "Normalize execution timestamps",
+        kind: "task",
+        state: "in-progress",
+        priority: "normal",
+        created_at: created,
+        updated_at: created,
+        execution: {
+          attempts: [
+            {
+              started_at: attemptStart,
+              ended_at: attemptEnd,
+              duration_seconds: 300,
+              status: "failed",
+              executor: {
+                tool: "agent-driver",
+                model: "gpt-5-codex",
+              },
+              reviewer: {
+                name: "fabio",
+                approved: false,
+                reviewed_at: reviewTime,
+              },
+            },
+          ],
+        },
+      },
+      body: fullBody(),
+      path: path.join(stateDir("in-progress"), "task-task-datetime-normalization.md"),
+    } as unknown as TaskDoc;
+
+    const serialized = serializeTaskDoc(doc);
+    await fs.writeFile(filePath, serialized, "utf8");
+
+    const { doc: parsed } = await readTaskFile(filePath);
+
+    const attempt = parsed.meta.execution?.attempts[0];
+    expect(typeof parsed.meta.created_at).toBe("string");
+    expect(typeof parsed.meta.updated_at).toBe("string");
+    expect(attempt).toBeDefined();
+    expect(typeof attempt?.started_at).toBe("string");
+    expect(typeof attempt?.ended_at).toBe("string");
+    expect(typeof attempt?.reviewer?.reviewed_at).toBe("string");
+
+    expect(attempt?.started_at).toBe("2025-11-03T01:10:00.000Z");
+    expect(attempt?.ended_at).toBe("2025-11-03T01:15:00.000Z");
+    expect(attempt?.reviewer?.reviewed_at).toBe("2025-11-03T01:20:00.000Z");
+  });
 });
 
 describe("readTaskFile", () => {

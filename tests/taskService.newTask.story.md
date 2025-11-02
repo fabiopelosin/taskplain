@@ -44,10 +44,15 @@ Uncomment this section when completing the task. Fill before running `taskplain 
 
 ### Changelog
 
-Required. Summarize what shipped using Keep a Changelog verbs (Added, Changed, Fixed, etc.):
-- Added POST /api/users endpoint with JWT validation
-- Changed login flow to use refresh tokens
-- Fixed memory leak in WebSocket connections
+Required. Write a single user-facing entry explaining what changed and why it matters. Use Keep a Changelog verbs (Added, Changed, Fixed, etc.). Focus on features and user impact, not file paths or documentation updates.
+
+Good example:
+- Added execution telemetry schema for tracking agent performance and runtime metrics. Orchestration systems can now record execution attempts in task frontmatter, enabling data-driven analysis and optimized routing strategies.
+
+Avoid:
+- Added types to src/domain/types.ts
+- Updated README.md and docs/product.md
+- Changed field ordering in taskFile.ts
 
 ### Decisions
 

@@ -43,6 +43,56 @@ export const linkSchema = z.discriminatedUnion("type", [
 
 export type Link = z.infer<typeof linkSchema>;
 
+export const executionStatusSchema = z.enum(["completed", "failed", "abandoned"]);
+
+export type ExecutionStatus = z.infer<typeof executionStatusSchema>;
+
+export const executionExecutorSchema = z.object({
+  tool: z.string().min(1),
+  model: z.string().min(1).optional(),
+  planner: z
+    .object({
+      tool: z.string().min(1),
+      model: z.string().min(1).optional(),
+    })
+    .optional(),
+});
+
+export type ExecutionExecutor = z.infer<typeof executionExecutorSchema>;
+
+export const executionReviewerSchema = z.object({
+  name: z.string().min(1),
+  approved: z.boolean(),
+  reviewed_at: z.string().datetime(),
+  notes: z.string().min(1).optional(),
+});
+
+export type ExecutionReviewer = z.infer<typeof executionReviewerSchema>;
+
+export const executionAttemptSchema = z
+  .object({
+    started_at: z.string().datetime(),
+    ended_at: z.string().datetime(),
+    duration_seconds: z.number().int().min(0),
+    status: executionStatusSchema,
+    error_reason: z.string().min(1).optional(),
+    executor: executionExecutorSchema,
+    reviewer: executionReviewerSchema.optional(),
+    notes: z.string().min(1).optional(),
+  })
+  .refine((data) => new Date(data.started_at) <= new Date(data.ended_at), {
+    message: "started_at must be less than or equal to ended_at",
+    path: ["ended_at"],
+  });
+
+export type ExecutionAttempt = z.infer<typeof executionAttemptSchema>;
+
+export const taskExecutionSchema = z.object({
+  attempts: z.array(executionAttemptSchema).min(1),
+});
+
+export type TaskExecution = z.infer<typeof taskExecutionSchema>;
+
 const COMMIT_MESSAGE_CUTOFF_MS = Date.parse("2025-11-01T00:00:00Z");
 
 export const taskMetaSchema = z
@@ -70,6 +120,7 @@ export const taskMetaSchema = z
     touches: z.array(z.string().min(1)).optional(),
     depends_on: z.array(z.string().min(1)).optional(),
     blocks: z.array(z.string().min(1)).optional(),
+    execution: taskExecutionSchema.optional(),
   })
   .superRefine((meta, ctx) => {
     if (meta.state !== "done") {

@@ -9,9 +9,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ### Added
 
-- `commit_message` frontmatter field for tasks, enforced when `state: done`, enabling automations to run `yq -r '.commit_message'` to author commits deterministically.
-- Agent handbook guidance telling operators to populate `commit_message` before completing work.
-- `pnpm fix` package script that wraps biome autofix and formatting to satisfy preflight workflows.
+- Execution telemetry schema for tracking agent performance and runtime metrics. Orchestration systems can now record execution attempts (duration, model used, status) in task frontmatter, enabling data-driven analysis of which models work best for different task types. This creates a feedback loop where consumers can query historical performance data and optimize agent-to-task routing strategies. The `execution` field is optional and doesn't block task completion.
+- Added `commit_message` frontmatter field for tasks, enforced when `state: done`, enabling automations to run `yq -r '.commit_message'` to author commits deterministically.
 
 ## [0.1.0] - Initial Release
 
