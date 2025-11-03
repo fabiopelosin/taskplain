@@ -161,6 +161,43 @@ describe("serializeTaskDoc", () => {
     expect(serialized.endsWith("\n")).toBe(true);
   });
 
+  it("keeps long commit_message scalars on a single line", () => {
+    const longCommit =
+      "feat(cli): ensure commit message metadata stays on one line for YAML serialization  [Task:commit-linewrap]";
+    expect(longCommit.length).toBeGreaterThanOrEqual(80);
+
+    const doc: TaskDoc = {
+      meta: {
+        id: "task-long-commit",
+        title: "Long Commit Message",
+        kind: "task",
+        state: "in-progress",
+        priority: "normal",
+        commit_message: longCommit,
+        created_at: ISO,
+        updated_at: ISO,
+        last_activity_at: ISO,
+      },
+      body: fullBody(),
+      path: path.join(stateDir("in-progress"), "task-task-long-commit.md"),
+    };
+
+    const serialized = serializeTaskDoc(doc);
+    const lines = serialized.split("\n");
+    const commitLineIndex = lines.findIndex((line) => line.startsWith("commit_message:"));
+    expect(commitLineIndex).toBeGreaterThan(-1);
+
+    const commitLine = lines[commitLineIndex] ?? "";
+    const payload = commitLine.replace(/^commit_message:\s*/, "");
+    const normalizedPayload =
+      payload.startsWith('"') && payload.endsWith('"') ? payload.slice(1, -1) : payload;
+
+    expect(normalizedPayload).toBe(longCommit);
+
+    const nextLine = lines[commitLineIndex + 1];
+    expect(nextLine?.startsWith("  ")).toBe(false);
+  });
+
   it("normalizes Date instances nested in execution metadata", async () => {
     const created = new Date("2025-11-03T01:02:03.000Z");
     const attemptStart = new Date("2025-11-03T01:10:00.000Z");

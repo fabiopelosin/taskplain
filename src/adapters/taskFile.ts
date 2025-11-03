@@ -151,7 +151,7 @@ export function serializeTaskDoc(doc: TaskDoc): string {
   const validated = { meta, body: doc.body, path: doc.path } as TaskDoc;
   const orderedMeta = orderTaskMeta(validated.meta);
   const yamlDoc = new YAML.Document(orderedMeta);
-  const frontMatter = `---\n${yamlDoc.toString().trim()}\n---\n`;
+  const frontMatter = `---\n${yamlDoc.toString({ lineWidth: 0 }).trim()}\n---\n`;
   const body = validated.body.endsWith("\n") ? validated.body : `${validated.body}\n`;
   const separator = validated.body.startsWith("\n") ? "" : "\n";
   return `${frontMatter}${separator}${body}`;
