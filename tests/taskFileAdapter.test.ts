@@ -288,6 +288,51 @@ describe("readTaskFile", () => {
     `);
   });
 
+  it("preserves execution telemetry without emitting unknown_meta_key warnings", async () => {
+    const repo = await makeRepo();
+    const relPath = path.join(repo, stateDir("in-progress"), "task-task-execution-telemetry.md");
+    await fs.ensureDir(path.dirname(relPath));
+
+    const content = [
+      "---",
+      "id: task-execution-telemetry",
+      "title: Execution Telemetry",
+      "kind: task",
+      "state: in-progress",
+      "priority: normal",
+      "created_at: 2025-11-03T07:08:09.123Z",
+      "updated_at: 2025-11-03T07:08:09.123Z",
+      "last_activity_at: 2025-11-03T07:08:09.123Z",
+      "execution:",
+      "  attempts:",
+      "    - started_at: 2025-11-03T07:10:00.000Z",
+      "      ended_at: 2025-11-03T07:20:00.000Z",
+      "      duration_seconds: 600",
+      "      status: completed",
+      "      executor:",
+      "        tool: agent-driver",
+      "        model: gpt-5-codex",
+      "---",
+      "",
+      "## Overview",
+      "",
+      "- Track execution attempts successfully.",
+      "",
+      "## Acceptance Criteria",
+      "",
+      "- [ ] Placeholder",
+      "",
+      "## Technical Approach",
+      "",
+      "- Placeholder",
+    ].join("\n");
+
+    await fs.writeFile(relPath, content, "utf8");
+
+    const { warnings } = await readTaskFile(relPath);
+    expect(warnings).toHaveLength(0);
+  });
+
   it("fails validation when a done task omits commit_message", async () => {
     const repo = await makeRepo();
     const relPath = path.join(repo, stateDir("done"), "2025-11-02 task-missing-commit.md");

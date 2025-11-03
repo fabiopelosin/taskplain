@@ -413,7 +413,8 @@ describe("TaskService handling of invalid files", () => {
       await fs.ensureDir(invalidDir);
       const invalidPath = path.join(invalidDir, "task-invalid-links.md");
 
-      const invalidContent = `---\n` +
+      const invalidContent =
+        `---\n` +
         `id: task-invalid-links\n` +
         `title: Invalid Links\n` +
         `kind: task\n` +
@@ -463,8 +464,7 @@ describe("TaskService handling of invalid files", () => {
       const invalidPath = path.join(invalidDir, "broken-frontmatter.md");
       await fs.writeFile(invalidPath, "---\n[[\n---\n", "utf8");
 
-      await expect(service.loadTaskById("missing-task"))
-        .rejects.toThrow("skipped 1 invalid file");
+      await expect(service.loadTaskById("missing-task")).rejects.toThrow("skipped 1 invalid file");
 
       const warnings = service.drainWarnings();
       const readWarning = warnings.find((warning) => warning.code === "read_failed");

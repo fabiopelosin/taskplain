@@ -127,7 +127,10 @@ export class TaskService {
         this.recordTaskReadError(filePath, error);
       }
     }
-    const suffix = skipped.length > 0 ? ` (skipped ${skipped.length} invalid file${skipped.length === 1 ? "" : "s"})` : "";
+    const suffix =
+      skipped.length > 0
+        ? ` (skipped ${skipped.length} invalid file${skipped.length === 1 ? "" : "s"})`
+        : "";
     throw new Error(`Task with id ${id} not found${suffix}`);
   }
 
@@ -1341,9 +1344,7 @@ export class TaskService {
     }
 
     const fallbackMessage =
-      error instanceof Error && typeof error.message === "string"
-        ? error.message
-        : String(error);
+      error instanceof Error && typeof error.message === "string" ? error.message : String(error);
     this.warnings.push({
       code: "read_failed",
       message: `Unable to read task file: ${fallbackMessage}`,

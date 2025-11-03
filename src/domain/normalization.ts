@@ -59,6 +59,7 @@ const KNOWN_KEYS = new Set<string>([
   "completed_at",
   "links",
   "last_activity_at",
+  "execution",
 ]);
 
 export function normalizeMetaInput(data: Record<string, unknown>): NormalizeMetaResult {
