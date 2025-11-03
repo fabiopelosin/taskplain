@@ -188,6 +188,10 @@ taskplain update fix-mobile-navbar \\
 
 # Replace entire body (advanced)
 taskplain update fix-mobile-navbar --field body "$(cat new-body.md)"
+
+# Read or batch-edit metadata with JSON
+taskplain metadata get fix-mobile-navbar --output json
+echo '{"priority":"high","touches":["src/app.ts"],"blocked":null}' | taskplain metadata set fix-mobile-navbar
 \`\`\`
 
 ### Move Tasks Between States

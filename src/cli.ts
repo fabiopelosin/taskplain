@@ -6,6 +6,7 @@ import open from "open";
 import packageJson from "../package.json";
 
 import { GitAdapter } from "./adapters/gitAdapter";
+import { META_KEY_ORDER, orderTaskMeta } from "./adapters/taskFile";
 import { SNIPPET_VERSION } from "./domain/canonical";
 import { stateDir } from "./domain/paths";
 import { isSectionId, orderedSectionIds, type SectionId } from "./domain/sections";
@@ -153,6 +154,107 @@ function parseHumanJsonOutput(
     throw new Error("--output must be 'human' or 'json'");
   }
   return normalized as HumanJsonOutput;
+}
+
+async function readStdin(): Promise<string> {
+  const chunks: string[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
+  }
+  return chunks.join("");
+}
+
+const METADATA_EMPTY_DEFAULTS: Partial<Record<keyof TaskMeta, () => unknown>> = {
+  children: () => [],
+  assignees: () => [],
+  labels: () => [],
+  touches: () => [],
+  depends_on: () => [],
+  blocks: () => [],
+  links: () => [],
+};
+
+function buildMetadataSnapshot(meta: TaskMeta): Record<string, unknown> {
+  const canonical = orderTaskMeta(meta);
+  const canonicalRecord = canonical as unknown as Record<string, unknown>;
+  const snapshot: Record<string, unknown> = {};
+
+  for (const key of META_KEY_ORDER) {
+    const value = canonicalRecord[key];
+    if (value !== undefined) {
+      snapshot[key] = value;
+      continue;
+    }
+    const factory = METADATA_EMPTY_DEFAULTS[key];
+    snapshot[key] = factory ? factory() : null;
+  }
+
+  for (const [key, value] of Object.entries(canonicalRecord)) {
+    if (META_KEY_ORDER.includes(key as keyof TaskMeta)) {
+      continue;
+    }
+    snapshot[key] = value;
+  }
+
+  return snapshot;
+}
+
+function formatMetadataValue(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+type MetadataSetParseResult = {
+  patch: Partial<Pick<TaskMeta, UpdateMetaField>>;
+  unset: UpdateMetaField[];
+};
+
+function parseMetadataSetInput(raw: unknown): MetadataSetParseResult {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("Metadata payload must be a JSON object keyed by metadata fields.");
+  }
+
+  const patch: Partial<Pick<TaskMeta, UpdateMetaField>> = {};
+  const unset: UpdateMetaField[] = [];
+  const unknownKeys: string[] = [];
+
+  for (const [rawKey, rawValue] of Object.entries(raw)) {
+    const key = rawKey as UpdateMetaField;
+    if (!UPDATE_ALLOWED_META.has(key)) {
+      unknownKeys.push(rawKey);
+      continue;
+    }
+
+    if (rawValue === null) {
+      if (!UNSET_ALLOWED_META.has(key)) {
+        throw new Error(
+          `Field '${rawKey}' cannot be null. Provide a value or omit the key from the payload.`,
+        );
+      }
+      unset.push(key);
+      continue;
+    }
+
+    (patch as Record<string, unknown>)[key] = rawValue;
+  }
+
+  if (unknownKeys.length > 0) {
+    const allowed = Array.from(UPDATE_ALLOWED_META).join(", ");
+    const suffix = unknownKeys.length === 1 ? "key" : "keys";
+    throw new Error(
+      `Unknown metadata ${suffix}: ${unknownKeys.join(", ")}. Allowed keys: ${allowed}`,
+    );
+  }
+
+  return {
+    patch,
+    unset: dedupe(unset),
+  };
 }
 
 const UPDATE_META_FIELDS = [
@@ -1067,6 +1169,110 @@ async function handleUpdate(
   const prefix = result.dryRun ? colors.yellow("dry-run") : colors.green("updated");
   const summary = parts.length > 0 ? ` ${formatNote(parts.join(" "))}` : "";
   process.stdout.write(`${prefix} ${formatId(id)}${summary}\n`);
+  printWarningsHuman(warnings, repoRoot);
+}
+
+async function handleMetadataGet(
+  id: string,
+  options: {
+    output?: string;
+  },
+): Promise<void> {
+  const outputFormat = parseHumanJsonOutput(options.output);
+  const { repoRoot, taskService } = await getTaskCommandContext();
+  const doc = await taskService.loadTaskById(id);
+  const warnings = taskService.drainWarnings();
+  const snapshot = buildMetadataSnapshot(doc.meta);
+
+  if (outputFormat === "json") {
+    const payload = {
+      id: doc.meta.id,
+      meta: snapshot,
+      warnings: warningsToJson(warnings, repoRoot),
+    };
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(`${formatHeading("Metadata")}\n`);
+  const headers: TableCell[] = [
+    { text: "KEY", color: colors.bold },
+    { text: "VALUE", color: colors.bold },
+  ];
+  const rows: TableCell[][] = Object.entries(snapshot).map(([key, value]) => [
+    { text: key },
+    { text: formatMetadataValue(value) },
+  ]);
+  const table = renderTable(headers, rows, {
+    flexColumns: [1],
+    minWidths: [14, 24],
+  });
+  process.stdout.write(table);
+  if (warnings.length > 0) {
+    process.stdout.write("\n");
+  }
+  printWarningsHuman(warnings, repoRoot);
+}
+
+async function handleMetadataSet(
+  id: string,
+  options: {
+    output?: string;
+  },
+): Promise<void> {
+  const outputFormat = parseHumanJsonOutput(options.output);
+  const { repoRoot, taskService } = await getTaskCommandContext();
+  const rawInput = await readStdin();
+  if (rawInput.trim().length === 0) {
+    throw new Error("Provide metadata JSON on stdin.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawInput);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    throw new Error(`Unable to parse JSON payload: ${reason}`);
+  }
+
+  const { patch, unset } = parseMetadataSetInput(parsed);
+  const hasPatch = Object.keys(patch).length > 0 || unset.length > 0;
+  if (!hasPatch) {
+    throw new Error("Provide at least one metadata key to update.");
+  }
+
+  const result = await taskService.update({
+    id,
+    metaPatch: patch,
+    unset,
+    sections: {},
+  });
+  const warnings = taskService.drainWarnings();
+
+  if (outputFormat === "json") {
+    const payload = {
+      id,
+      changed: result.changed,
+      dryRun: result.dryRun,
+      meta: buildMetadataSnapshot(result.meta),
+      metaChanges: result.metaChanges,
+      from: result.fromPath,
+      to: result.toPath,
+      warnings: warningsToJson(warnings, repoRoot),
+    };
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  if (!result.changed) {
+    process.stdout.write(`${formatNote("No changes")} ${formatId(id)} unchanged.\n`);
+    printWarningsHuman(warnings, repoRoot);
+    return;
+  }
+
+  const metaSummary = dedupe(result.metaChanges);
+  const summary = metaSummary.length > 0 ? ` ${formatNote(`meta=[${metaSummary.join(",")}]`)}` : "";
+  process.stdout.write(`${colors.green("updated")} ${formatId(id)}${summary}\n`);
   printWarningsHuman(warnings, repoRoot);
 }
 
@@ -2806,6 +3012,39 @@ program
     });
   });
 
+const metadataCommand = program
+  .command("metadata")
+  .description("Inspect and edit task metadata via JSON helpers")
+  .addHelpText(
+    "afterAll",
+    () =>
+      `\nExamples:\n  taskplain metadata get demo-task --output json\n  echo '{"priority":"high"}' | taskplain metadata set demo-task\n`,
+  );
+
+metadataCommand
+  .command("get")
+  .description("Print tracked metadata keys in canonical order")
+  .argument("<id>", "task id to inspect")
+  .option("--output <format>", "human|json", "human")
+  .action((id, options) => {
+    handleMetadataGet(id, options).catch((error) => {
+      process.stderr.write(`${(error as Error).message}\n`);
+      process.exitCode = process.exitCode ?? 1;
+    });
+  });
+
+metadataCommand
+  .command("set")
+  .description("Apply metadata updates from JSON provided on stdin")
+  .argument("<id>", "task id to update")
+  .option("--output <format>", "human|json", "human")
+  .action((id, options) => {
+    handleMetadataSet(id, options).catch((error) => {
+      process.stderr.write(`${(error as Error).message}\n`);
+      process.exitCode = process.exitCode ?? 1;
+    });
+  });
+
 program
   .command("set")
   .description("Removed. Use 'taskplain update' instead.")
@@ -3063,7 +3302,17 @@ const helpSections: HelpSection[] = [
   },
   {
     title: "Work On Tasks",
-    commands: ["new", "update", "move", "adopt", "delete", "pickup", "complete", "cleanup"],
+    commands: [
+      "new",
+      "update",
+      "metadata",
+      "move",
+      "adopt",
+      "delete",
+      "pickup",
+      "complete",
+      "cleanup",
+    ],
   },
   {
     title: "Explore Tasks",

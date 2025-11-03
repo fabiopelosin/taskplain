@@ -89,6 +89,13 @@ taskplain complete fix-mobile-navbar
 
 The CLI provides structured outputs that coding agents and orchestration tools can consume deterministically.
 
+Inspect and update task metadata in one JSON round-trip:
+
+```bash
+taskplain metadata get fix-mobile-navbar --output json
+echo '{"priority":"high","touches":["src/app.ts"]}' | taskplain metadata set fix-mobile-navbar
+```
+
 ### 4. Monitor progress
 
 ```

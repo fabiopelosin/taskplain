@@ -641,6 +641,64 @@ const baseCommandDescriptors: CommandDescriptor[] = [
     group: "core",
   },
   {
+    name: "metadata get",
+    summary: "Inspect a task's metadata in canonical order as human or JSON output.",
+    usage: "taskplain metadata get <id> [options]",
+    options: [
+      { name: "<id>", summary: "Task identifier", type: "string" },
+      {
+        name: "--output <format>",
+        summary: "human | json",
+        type: "string",
+        default: "human",
+      },
+    ],
+    exitCodes: {
+      "0": "success",
+      "1": "task not found",
+    },
+    argsSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        output: { type: "string", enum: ["human", "json"], default: "human" },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    outputSchema: null,
+    group: "core",
+  },
+  {
+    name: "metadata set",
+    summary: "Update task metadata by piping a JSON object on stdin.",
+    usage: "taskplain metadata set <id> [options]",
+    options: [
+      { name: "<id>", summary: "Task identifier", type: "string" },
+      {
+        name: "--output <format>",
+        summary: "human | json",
+        type: "string",
+        default: "human",
+      },
+    ],
+    exitCodes: {
+      "0": "success",
+      "1": "invalid payload or task not found",
+    },
+    argsSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        output: { type: "string", enum: ["human", "json"], default: "human" },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    outputSchema: null,
+    group: "core",
+  },
+  {
     name: "move",
     summary: "Move a task into another state directory.",
     usage: "taskplain move <id> <state> [options]",

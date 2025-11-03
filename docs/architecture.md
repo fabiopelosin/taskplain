@@ -1036,6 +1036,8 @@ Commands
 - `tree` render hierarchy or open-state groupings.
 - `new` create a task file and print the id/path (supports `--output json`).
 - `update` patch metadata and sections with optional dry-run/JSON output.
+- `metadata get` print canonical metadata (including empty defaults) as a table or JSON.
+- `metadata set` merge JSON metadata patches from stdin, treating `null` as an unset for optional fields.
 - `move` validate state transitions and rename the file (preferring `git mv`).
 - `complete` transition to done, rename with a date prefix, and optionally dry-run.
 - `subject` compose commit subject lines with optional inferred `Closes #...` trailers.
