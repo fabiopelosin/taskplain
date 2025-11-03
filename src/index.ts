@@ -3,6 +3,7 @@ export * from "./domain/stateMachine";
 export * from "./domain/types";
 export * from "./services/fixService";
 export * from "./services/pickupService";
+export * from "./services/statsService";
 export * from "./services/taskQueryService";
 export * from "./services/taskService";
 export * from "./services/validationService";

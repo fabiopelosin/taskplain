@@ -121,6 +121,7 @@ tasks/
 Tasks move through folders as they progress. Each file contains metadata for smart dispatching:
 
 **Planning metadata** (set before execution):
+
 - `size`: tiny/small/medium/large/xl — estimated effort
 - `priority`: none/low/normal/high/urgent — urgency level
 - `ambiguity`: low/medium/high — uncertainty in requirements
@@ -130,6 +131,7 @@ Tasks move through folders as they progress. Each file contains metadata for sma
 - `touches`: glob patterns describing the code it modifies
 
 **Execution metadata** (recorded during work, optional):
+
 - `execution.attempts[]`: array of execution attempts with duration, model used, and status
 - Enables orchestration systems to analyze performance patterns and optimize agent routing
 
@@ -150,25 +152,28 @@ wait
 
 ### Learning from Execution History
 
-Your orchestration system can analyze execution data to optimize agent routing:
+When your tasks capture execution data, Taskplain can surface how each model and tool performs. The `taskplain stats` command summarizes execution attempts, total work time, and the executor combinations that ran so you can spot patterns fast:
 
 ```bash
-# Query completed tasks to analyze performance patterns
-taskplain list --state done --output json | \
-  jq -r '.[] | select(.execution) |
-    .execution.attempts[-1] |
-    [.executor.model, .duration_seconds, .status] | @tsv'
+# Summarize the last day of telemetry (limit to 5 tasks)
+taskplain stats --since 1d --limit 5
 
-# Example output:
-# claude-sonnet-4-20250514    765    completed
-# claude-sonnet-3-5-20241022  1420   failed
-# claude-sonnet-4-20250514    890    completed
-
-# Use this data to route tasks based on learned patterns:
-# - High ambiguity tasks → more capable models
-# - Simple tasks → faster/cheaper models
-# - Track success rates by model × ambiguity combinations
+# Export structured metrics for dashboards or automation
+taskplain stats --since 1d --limit 5 --output json
 ```
+
+Example summary:
+
+```text
+Summary
+- Average work time per task: 8m
+- Total work time:            32m
+- Average attempts per task:  1.25
+
+Tools: agent-driver with gpt-5-codex (5 attempts, 32m)
+```
+
+Use the summary to steer high-ambiguity work toward more capable models, keep straightforward tasks on faster executors, and measure success rates per tool/model pairing.
 
 ### With CI/CD
 

@@ -10,7 +10,16 @@ import { META_KEY_ORDER, orderTaskMeta } from "./adapters/taskFile";
 import { SNIPPET_VERSION } from "./domain/canonical";
 import { stateDir } from "./domain/paths";
 import { isSectionId, orderedSectionIds, type SectionId } from "./domain/sections";
-import type { Ambiguity, Executor, Isolation, Kind, Size, TaskDoc, TaskMeta } from "./domain/types";
+import type {
+  Ambiguity,
+  ExecutionStatus,
+  Executor,
+  Isolation,
+  Kind,
+  Size,
+  TaskDoc,
+  TaskMeta,
+} from "./domain/types";
 import {
   ambiguityOrder,
   executorOrder,
@@ -32,11 +41,13 @@ import {
 } from "./services/handbookService";
 import { NextService, type RankedCandidate } from "./services/nextService";
 import { PickupService } from "./services/pickupService";
-import type {
-  OpenTreeItem,
-  OpenTreeStateGroup,
-  TaskListItem,
-  TaskTreeNode,
+import { computeExecutionStats, type StatsExecutorRow } from "./services/statsService";
+import {
+  type OpenTreeItem,
+  type OpenTreeStateGroup,
+  type TaskListItem,
+  TaskQueryService,
+  type TaskTreeNode,
 } from "./services/taskQueryService";
 import { type TaskCascadeMode, TaskService, type TaskWarning } from "./services/taskService";
 import type { ValidationStreamEvent } from "./services/validationReporter";
@@ -57,6 +68,7 @@ import {
   setColorMode,
   type TableCell,
 } from "./utils/cliUi";
+import { parseRelativeAgeToMs } from "./utils/relativeTime";
 
 const allStates: State[] = ["idea", "ready", "in-progress", "done", "canceled"];
 const openStateDefaults: State[] = ["idea", "ready", "in-progress"];
@@ -1688,6 +1700,315 @@ async function handleList(options: {
   printWarningsHuman(warnings, repoRoot);
 }
 
+function formatExecutionStatusBadge(status: ExecutionStatus): TableCell {
+  const label = status.toUpperCase();
+  switch (status) {
+    case "completed":
+      return { text: label, color: colors.green };
+    case "failed":
+      return { text: label, color: colors.red };
+    case "abandoned":
+      return { text: label, color: colors.magenta };
+    default:
+      return { text: label };
+  }
+}
+
+function formatExecutorCell(tool: string | null, model: string | null): TableCell {
+  const normalizedTool = tool ?? null;
+  const normalizedModel = model ?? null;
+  if (!normalizedTool && !normalizedModel) {
+    return { text: "-", color: colors.dim };
+  }
+  const parts: string[] = [];
+  if (normalizedTool) {
+    parts.push(normalizedTool);
+  }
+  if (normalizedModel) {
+    parts.push(normalizedModel);
+  }
+  return { text: parts.join(" · "), color: colors.magenta };
+}
+
+function formatHumanDuration(totalSeconds: number): string {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
+    return "0s";
+  }
+  const rounded = Math.round(totalSeconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const seconds = rounded % 60;
+
+  const parts: string[] = [];
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes}m`);
+  }
+  if (parts.length === 0 || (hours === 0 && seconds > 0 && minutes < 5)) {
+    if (seconds > 0) {
+      parts.push(`${seconds}s`);
+    }
+  }
+  return parts.join(" ");
+}
+
+function formatExecutorSummaryEntry(entry: StatsExecutorRow): string {
+  const tool = entry.tool ?? null;
+  const model = entry.model ?? null;
+  let base: string;
+  if (tool && model) {
+    base = `${tool} with ${model}`;
+  } else if (tool) {
+    base = tool;
+  } else if (model) {
+    base = model;
+  } else {
+    base = "(unknown executor)";
+  }
+  const attemptLabel = entry.attempt_count === 1 ? "1 attempt" : `${entry.attempt_count} attempts`;
+  const workLabel = formatHumanDuration(entry.work_seconds);
+  return `${base} (${attemptLabel}, ${workLabel})`;
+}
+
+async function handleStats(options: {
+  limit?: string;
+  since?: string;
+  task?: string;
+  output?: string;
+  noColor?: boolean;
+}): Promise<void> {
+  const previousColorMode = getColorMode();
+  const enforceNoColor = options.noColor === true;
+  if (enforceNoColor) {
+    setColorMode("never");
+  }
+
+  try {
+    const outputFormat = parseHumanJsonOutput(options.output);
+    const limit = options.limit ? parsePositiveInteger(options.limit, "--limit") : undefined;
+    const sinceWindowMs = options.since ? parseRelativeAgeToMs(options.since) : undefined;
+
+    const { repoRoot, taskService } = await getTaskCommandContext();
+    const allTasks = await taskService.listAllTasks();
+    const query = new TaskQueryService(allTasks);
+    const tasksById = new Map(allTasks.map((doc) => [doc.meta.id, doc]));
+
+    let selectedDocs = allTasks;
+
+    if (options.task) {
+      const root = tasksById.get(options.task);
+      if (!root) {
+        throw new Error(`Task with id '${options.task}' not found`);
+      }
+      const includeIds = new Set<string>();
+      const stack = [root.meta.id];
+      while (stack.length > 0) {
+        const currentId = stack.pop()!;
+        if (includeIds.has(currentId)) {
+          continue;
+        }
+        includeIds.add(currentId);
+        const children = query.getChildren(currentId);
+        for (const child of children) {
+          stack.push(child.meta.id);
+        }
+      }
+      selectedDocs = allTasks.filter((doc) => includeIds.has(doc.meta.id));
+    }
+
+    const activityMs = (doc: TaskDoc): number => {
+      const primary = doc.meta.last_activity_at ?? doc.meta.updated_at;
+      const parsedPrimary = Date.parse(primary);
+      if (!Number.isNaN(parsedPrimary)) {
+        return parsedPrimary;
+      }
+      const fallback = Date.parse(doc.meta.updated_at);
+      return Number.isNaN(fallback) ? 0 : fallback;
+    };
+
+    if (sinceWindowMs !== undefined) {
+      const cutoff = Date.now() - sinceWindowMs;
+      selectedDocs = selectedDocs.filter((doc) => activityMs(doc) >= cutoff);
+    }
+
+    let orderedDocs = selectedDocs
+      .map((doc) => ({
+        doc,
+        activity: activityMs(doc),
+        updated: Date.parse(doc.meta.updated_at),
+      }))
+      .sort((a, b) => {
+        if (b.activity !== a.activity) {
+          return b.activity - a.activity;
+        }
+        if (b.updated !== a.updated) {
+          return b.updated - a.updated;
+        }
+        return a.doc.meta.id.localeCompare(b.doc.meta.id);
+      })
+      .map((entry) => entry.doc);
+
+    if (limit !== undefined) {
+      orderedDocs = orderedDocs.slice(0, limit);
+    }
+
+    const stats = computeExecutionStats(orderedDocs);
+    const warnings = taskService.drainWarnings();
+
+    if (outputFormat === "json") {
+      const filtersPayload: Record<string, unknown> = {};
+      if (limit !== undefined) filtersPayload.limit = limit;
+      if (options.since) filtersPayload.since = options.since;
+      if (options.task) filtersPayload.task = options.task;
+
+      const tasksPayload = stats.tasks.map((row) => ({
+        ...row,
+        activity_at: row.last_activity_at ?? row.updated_at,
+      }));
+
+      const payload = {
+        filters: filtersPayload,
+        counts: stats.counts,
+        totals: stats.totals,
+        averages: stats.averages,
+        executors: stats.executors,
+        distinct_executor_count: stats.distinct_executor_count,
+        tasks: tasksPayload,
+        insufficient_telemetry_ids: stats.insufficientTelemetryIds,
+        warnings: warningsToJson(warnings, repoRoot),
+      };
+      process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+      return;
+    }
+
+    const integerFormat = new Intl.NumberFormat("en-US");
+    const decimalFormat = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+
+    const filters: string[] = [];
+    if (limit !== undefined) filters.push(`limit=${limit}`);
+    if (options.since) filters.push(`since=${options.since}`);
+    if (options.task) filters.push(`task=${options.task}`);
+
+    process.stdout.write(`${formatHeading("Execution Stats")}\n`);
+    if (filters.length > 0) {
+      process.stdout.write(`${formatNote(`Filters: ${filters.join(", ")}`)}\n`);
+    }
+
+    process.stdout.write(
+      `Tasks analyzed: ${integerFormat.format(stats.counts.total_tasks)} ` +
+        `(telemetry: ${integerFormat.format(stats.counts.with_execution)}, ` +
+        `insufficient: ${integerFormat.format(stats.counts.insufficient_telemetry)})\n`,
+    );
+
+    process.stdout.write(`${formatHeading("Summary")}\n`);
+    const summaryItems: Array<{ label: string; value: string; color: (value: string) => string }> =
+      [
+        {
+          label: "Average work time per task",
+          value:
+            stats.counts.with_execution === 0
+              ? "-"
+              : formatHumanDuration(stats.averages.work_seconds),
+          color: stats.counts.with_execution === 0 ? colors.dim : colors.cyan,
+        },
+        {
+          label: "Total work time",
+          value: formatHumanDuration(stats.totals.work_seconds),
+          color: stats.totals.work_seconds === 0 ? colors.dim : colors.green,
+        },
+        {
+          label: "Average attempts per task",
+          value:
+            stats.counts.with_execution === 0 ? "-" : decimalFormat.format(stats.averages.attempts),
+          color: stats.counts.with_execution === 0 ? colors.dim : colors.cyan,
+        },
+      ];
+    const summaryLabelWidth = summaryItems.reduce(
+      (max, item) => Math.max(max, item.label.length),
+      0,
+    );
+    for (const item of summaryItems) {
+      const key = `${item.label}:`.padEnd(summaryLabelWidth + 1);
+      process.stdout.write(`- ${key} ${item.color(item.value)}\n`);
+    }
+
+    if (stats.executors.length > 0) {
+      const separator = colors.dim("  •  ");
+      const executorText = stats.executors
+        .map((entry) => colors.magenta(formatExecutorSummaryEntry(entry)))
+        .join(separator);
+      process.stdout.write(`\nTools: ${executorText}\n`);
+    }
+
+    process.stdout.write(`\n`);
+
+    if (stats.counts.with_execution === 0) {
+      process.stdout.write(
+        `${formatNote("No execution telemetry found for the selected tasks.")}\n`,
+      );
+    } else {
+      process.stdout.write(`${formatHeading("Per Task")}\n`);
+      const headers: TableCell[] = [
+        { text: "Task" },
+        { text: "Attempts", align: "right" },
+        { text: "Work", align: "right" },
+        { text: "Latest Status" },
+        { text: "Latest Executor" },
+        { text: "Updated" },
+      ];
+      const rows: TableCell[][] = stats.tasks.map((row) => {
+        const activityIso = row.last_activity_at ?? row.updated_at;
+        const statusCell = formatExecutionStatusBadge(row.latest_status);
+        const executorCell = formatExecutorCell(row.latest_tool, row.latest_model);
+        const workCell: TableCell = {
+          text: formatHumanDuration(row.total_seconds),
+          align: "right",
+          color: row.total_seconds > 0 ? colors.green : colors.dim,
+        };
+        const updatedCell: TableCell = { text: activityIso };
+        return [
+          { text: row.id, color: colors.cyan },
+          { text: integerFormat.format(row.attempts), align: "right" },
+          workCell,
+          statusCell,
+          executorCell,
+          updatedCell,
+        ];
+      });
+      process.stdout.write(
+        renderTable(headers, rows, {
+          flexColumns: [0, 4, 5],
+          minWidths: [12, 8, 8, 14, 20, 20],
+          maxTotalWidth: 140,
+        }),
+      );
+    }
+
+    if (stats.counts.insufficient_telemetry > 0) {
+      const preview = stats.insufficientTelemetryIds.slice(0, 10);
+      const more = stats.insufficientTelemetryIds.length - preview.length;
+      const suffix = more > 0 ? `, +${more} more` : "";
+      process.stdout.write(
+        `${formatNote(
+          `Insufficient telemetry for ${stats.counts.insufficient_telemetry} task(s): ${preview.join(", ")}${suffix}`,
+        )}\n`,
+      );
+    }
+
+    process.stdout.write("\n");
+    printWarningsHuman(warnings, repoRoot);
+  } finally {
+    if (enforceNoColor) {
+      setColorMode(previousColorMode);
+    }
+  }
+}
+
 // --- Web server deterministic port allocation helpers ---
 function hashProjectPath(projectPath: string): number {
   // 32-bit FNV-1a hash
@@ -3151,6 +3472,26 @@ program
   });
 
 program
+  .command("stats")
+  .description("Summarize execution telemetry across recent tasks")
+  .option("--limit <n>", "restrict to the most recently updated n tasks")
+  .option("--since <age>", "only include tasks updated within the given age (e.g., 3h, 2d, 1w)")
+  .option("--task <id>", "analyze a task and its descendants")
+  .option("--no-color", "disable color output")
+  .option("--output <format>", "human|json", "human")
+  .action((options) => {
+    handleStats(options).catch((error) => {
+      process.stderr.write(`${(error as Error).message}\n`);
+      process.exitCode = 1;
+    });
+  })
+  .addHelpText(
+    "afterAll",
+    () =>
+      `\nExamples:\n  taskplain stats --since 1d --limit 10\n  taskplain stats --task story-alpha --output json\n`,
+  );
+
+program
   .command("show")
   .description("Show task metadata and a body preview")
   .argument("<id>", "task id to display")
@@ -3325,7 +3666,7 @@ const helpSections: HelpSection[] = [
   },
   {
     title: "Explore Tasks",
-    commands: ["list", "next", "show", "tree", "web"],
+    commands: ["list", "stats", "next", "show", "tree", "web"],
   },
 ];
 

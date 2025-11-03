@@ -1,5 +1,6 @@
 import { resolveSectionHeading } from "../domain/sections";
 import type { TaskDoc } from "../domain/types";
+import { parseRelativeAgeToMs } from "../utils/relativeTime";
 import { buildHierarchyIndex } from "./hierarchy";
 import type { TaskService } from "./taskService";
 
@@ -24,7 +25,7 @@ export class CleanupService {
   constructor(private readonly taskService: TaskService) {}
 
   async cleanupTasks(options: CleanupOptions): Promise<CleanupResult> {
-    const ageMs = this.parseAge(options.olderThan);
+    const ageMs = parseRelativeAgeToMs(options.olderThan);
     const cutoffDate = new Date(Date.now() - ageMs);
 
     // Load all tasks
@@ -94,26 +95,6 @@ export class CleanupService {
       summaries: allInsights,
       errors,
     };
-  }
-
-  private parseAge(age: string): number {
-    const match = age.match(/^(\d+)([dm])$/);
-    if (!match) {
-      throw new Error(
-        `Invalid age format: ${age}. Expected format: <number>d (days) or <number>m (months). Examples: 90d, 6m`,
-      );
-    }
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    if (unit === "d") {
-      return value * 24 * 60 * 60 * 1000; // days to milliseconds
-    } else if (unit === "m") {
-      return value * 30 * 24 * 60 * 60 * 1000; // approximate months to milliseconds
-    }
-
-    throw new Error(`Unsupported time unit: ${unit}`);
   }
 
   private extractInsights(doc: TaskDoc): ExtractedInsights {
