@@ -522,6 +522,7 @@ async function handleValidate(options: ValidateCommandOptions = {}): Promise<voi
         file: path.relative(repoRoot, event.file) || event.file,
         ok: event.ok,
         errors: event.errors,
+        warnings: event.warnings,
       });
       return;
     }
@@ -540,15 +541,17 @@ async function handleValidate(options: ValidateCommandOptions = {}): Promise<voi
     }
   };
 
-  const { docs, errors, parseErrors, filesChecked } = await collectValidationIssues(
-    taskService,
-    validator,
-    {
-      maxConcurrency,
-      minParallelFiles: minParallel,
-      onEvent: handleEvent,
-    },
-  );
+  const {
+    docs,
+    errors,
+    parseErrors,
+    filesChecked,
+    warnings: validationWarnings,
+  } = await collectValidationIssues(taskService, validator, {
+    maxConcurrency,
+    minParallelFiles: minParallel,
+    onEvent: handleEvent,
+  });
 
   // Collect normalization warnings surfaced during parsing and cross-document state anomalies
   const warningsFromIo = taskService.drainWarnings();
@@ -558,7 +561,7 @@ async function handleValidate(options: ValidateCommandOptions = {}): Promise<voi
     field: w.field,
     file: w.file,
   }));
-  const warnings = [...warningsFromIo, ...anomalyWarnings];
+  const warnings = [...warningsFromIo, ...anomalyWarnings, ...validationWarnings];
   if (outputFormat === "json") {
     for (const warning of warnings) {
       writeJson({

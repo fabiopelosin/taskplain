@@ -15,6 +15,10 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 - CLI and web flows now skip unreadable or schema-invalid task files, surfacing structured `parse_failed`/`read_failed` warnings instead of aborting the command.
 - Added `--check-acs` flag to `taskplain complete` so agents can automatically mark remaining acceptance criteria checkboxes before completion.
 
+### Changed
+
+- Validation now emits a warning (not a failure) when in-progress tasks have every acceptance criteria checkbox checked, guiding agents to either complete the task or uncheck work still in flight while keeping CI green.
+
 ## [0.1.0] - Initial Release
 
 ### Added

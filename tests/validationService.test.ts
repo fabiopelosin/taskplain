@@ -123,6 +123,7 @@ describe("ValidationService.validate", () => {
     const result = validator.validate(doc);
     expect(result.ok).toBe(true);
     expect(result.errors).toHaveLength(0);
+    expect(result.warnings).toHaveLength(0);
   });
 
   it("requires Post-Implementation Insights heading once a task is done", () => {
@@ -232,6 +233,7 @@ describe("ValidationService.validate", () => {
     });
     const result = validator.validate(doc);
     expect(result.ok).toBe(true);
+    expect(result.warnings).toHaveLength(0);
   });
 
   it("fails when acceptance criteria section is empty", () => {
@@ -257,6 +259,39 @@ describe("ValidationService.validate", () => {
     const result = validator.validate(doc);
     expect(result.ok).toBe(false);
     expect(result.errors.map((error) => error.code)).toContain("acceptance_criteria_empty");
+  });
+
+  it("warns instead of failing when in-progress tasks have all acceptance criteria checked", () => {
+    const validator = new ValidationService();
+    const doc = buildDoc({
+      id: "task-all-checked",
+      title: "Task With Checked ACs",
+      kind: "task",
+      state: "in-progress",
+      body: [
+        "## Overview",
+        "",
+        "## Acceptance Criteria",
+        "",
+        "- [x] Outcome verified",
+        "- [x] Cleanup performed",
+        "",
+        "## Technical Approach",
+        "",
+        "<!-- ## Post-Implementation Insights -->",
+        "",
+      ].join("\n"),
+    });
+
+    const result = validator.validate(doc);
+    expect(result.ok).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0].code).toBe("all_acceptance_criteria_completed");
+    expect(result.warnings[0].message).toContain(
+      "Complete it with 'taskplain complete task-all-checked'",
+    );
+    expect(result.warnings[0].message).toContain("uncheck criteria");
   });
 });
 
@@ -370,6 +405,7 @@ describe("ValidationService.validateAll", () => {
     const result = validator.validateAll(docs);
     expect(result.ok).toBe(false);
     expect(result.errors).not.toHaveLength(0);
+    expect(result.warnings).toHaveLength(0);
 
     const codes = result.errors.map((error) => error.code).sort();
     expect(codes).toMatchInlineSnapshot(`

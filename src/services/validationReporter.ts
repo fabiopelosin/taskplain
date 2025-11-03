@@ -3,13 +3,14 @@ import os from "node:os";
 import type { TaskDoc } from "../domain/types";
 import { runWithConcurrency } from "../utils/concurrency";
 import type { TaskService } from "./taskService";
-import type { ValidationError, ValidationService } from "./validationService";
+import type { ValidationError, ValidationService, ValidationWarning } from "./validationService";
 
 export interface ValidationCollection {
   docs: TaskDoc[];
   errors: ValidationError[];
   parseErrors: ValidationError[];
   filesChecked: number;
+  warnings: ValidationWarning[];
 }
 
 export type ValidationStage = "parse" | "document" | "collection";
@@ -19,6 +20,7 @@ export interface ValidationStreamEvent {
   file: string;
   index: number;
   errors: ValidationError[];
+  warnings: ValidationWarning[];
   ok: boolean;
 }
 
@@ -50,6 +52,7 @@ export async function collectValidationIssues(
   const docsByIndex: (TaskDoc | undefined)[] = new Array(files.length);
   const docErrors: ValidationError[] = [];
   const parseErrors: ValidationError[] = [];
+  const documentWarnings: ValidationWarning[] = [];
 
   const eventBuffer: (ValidationStreamEvent | undefined)[] = new Array(files.length);
   let nextEmitIndex = 0;
@@ -78,11 +81,15 @@ export async function collectValidationIssues(
       if (!result.ok) {
         docErrors.push(...result.errors);
       }
+      if (result.warnings.length > 0) {
+        documentWarnings.push(...result.warnings);
+      }
       emit({
         stage: "document",
         file: filePath,
         index,
         errors: result.errors,
+        warnings: result.warnings,
         ok: result.ok,
       });
     } catch (error) {
@@ -97,6 +104,7 @@ export async function collectValidationIssues(
         file: filePath,
         index,
         errors: [parseError],
+        warnings: [],
         ok: false,
       });
     }
@@ -124,6 +132,7 @@ export async function collectValidationIssues(
         file: filePath,
         index,
         errors: fileErrors,
+        warnings: [],
         ok: false,
       });
     }
@@ -136,6 +145,7 @@ export async function collectValidationIssues(
     errors,
     parseErrors,
     filesChecked,
+    warnings: documentWarnings,
   };
 }
 

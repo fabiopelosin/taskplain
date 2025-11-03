@@ -16,26 +16,38 @@ export interface ValidationError {
   file: string;
 }
 
+export interface ValidationWarning {
+  code: string;
+  message: string;
+  file: string;
+  field?: string;
+}
+
 export interface ValidationResult {
   ok: boolean;
   errors: ValidationError[];
+  warnings: ValidationWarning[];
 }
 
 export type ValidateCollectionOptions = Record<string, never>;
 
 export class ValidationService {
   validate(doc: TaskDoc): ValidationResult {
-    const errors = this.validateDocument(doc);
+    const { errors, warnings } = this.validateDocument(doc);
     return {
       ok: errors.length === 0,
       errors,
+      warnings,
     };
   }
 
   validateAll(docs: TaskDoc[], _options: ValidateCollectionOptions = {}): ValidationResult {
     const documentErrors: ValidationError[] = [];
+    const documentWarnings: ValidationWarning[] = [];
     for (const doc of docs) {
-      documentErrors.push(...this.validateDocument(doc));
+      const { errors, warnings } = this.validateDocument(doc);
+      documentErrors.push(...errors);
+      documentWarnings.push(...warnings);
     }
 
     const crossErrors = this.validateCrossDocument(docs);
@@ -43,11 +55,13 @@ export class ValidationService {
     return {
       ok: errors.length === 0,
       errors,
+      warnings: documentWarnings,
     };
   }
 
-  validateDocument(doc: TaskDoc): ValidationError[] {
+  validateDocument(doc: TaskDoc): { errors: ValidationError[]; warnings: ValidationWarning[] } {
     const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
 
     const parse = taskDocSchema.safeParse(doc);
     if (!parse.success) {
@@ -101,10 +115,9 @@ export class ValidationService {
         if (doc.meta.state !== "done" && doc.meta.state !== "canceled") {
           const allCompleted = checkboxLines.every((line) => /^[-*]\s+\[x|X\]\s+.+$/.test(line));
           if (allCompleted && checkboxLines.length > 0) {
-            errors.push({
+            warnings.push({
               code: "all_acceptance_criteria_completed",
-              message:
-                "All acceptance criteria checkboxes are completed. Task should be marked as done using 'taskplain complete'.",
+              message: `All acceptance criteria checkboxes are completed while the task is ${doc.meta.state}. Complete it with 'taskplain complete ${doc.meta.id}' or uncheck criteria until ready.`,
               file: doc.path,
             });
           }
@@ -143,7 +156,7 @@ export class ValidationService {
       }
     }
 
-    return errors;
+    return { errors, warnings };
   }
 
   validateCrossDocument(docs: TaskDoc[]): ValidationError[] {
@@ -341,10 +354,8 @@ export class ValidationService {
    * Detect non-fatal parent/child state anomalies and return them as warnings.
    * These are heuristics intended to surface likely-drift situations without blocking.
    */
-  detectParentChildStateWarnings(
-    docs: TaskDoc[],
-  ): Array<{ code: string; message: string; file: string; field?: string }> {
-    const warnings: Array<{ code: string; message: string; file: string; field?: string }> = [];
+  detectParentChildStateWarnings(docs: TaskDoc[]): ValidationWarning[] {
+    const warnings: ValidationWarning[] = [];
     if (docs.length === 0) {
       return warnings;
     }

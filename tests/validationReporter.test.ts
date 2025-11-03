@@ -98,4 +98,49 @@ describe("validation reporter", () => {
     expect(documentIndexes).toHaveLength(6);
     expect(documentIndexes).toEqual([...documentIndexes].sort((a, b) => a - b));
   });
+
+  it("collects validator warnings without failing the run", async () => {
+    const repoRoot = await makeRepo();
+    const service = new TaskService({ repoRoot });
+
+    const fileDir = path.join(repoRoot, "tasks", "20-in-progress");
+    await fs.ensureDir(fileDir);
+    const filePath = path.join(fileDir, "task-warning-test.md");
+    const contents = [
+      "---",
+      "id: warning-test",
+      "title: Warning Test",
+      "kind: task",
+      "state: in-progress",
+      "priority: normal",
+      "size: small",
+      "ambiguity: low",
+      "executor: standard",
+      "isolation: module",
+      "created_at: 2025-01-01T00:00:00.000Z",
+      "updated_at: 2025-01-01T00:00:00.000Z",
+      "completed_at: null",
+      "links: []",
+      "last_activity_at: 2025-01-01T00:00:00.000Z",
+      "---",
+      "",
+      "## Overview",
+      "",
+      "## Acceptance Criteria",
+      "",
+      "- [x] Ready to wrap up",
+      "",
+      "## Technical Approach",
+      "",
+    ].join("\n");
+    await fs.writeFile(filePath, contents, "utf8");
+
+    const validator = new ValidationService();
+    const { warnings, errors } = await collectValidationIssues(service, validator);
+
+    expect(errors).toHaveLength(0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].code).toBe("all_acceptance_criteria_completed");
+    expect(warnings[0].file).toBe(filePath);
+  });
 });
