@@ -789,6 +789,74 @@ describe("TaskService.update", () => {
     }
   });
 
+  it("strips duplicate section headings from field updates", async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-update-strip-heading-"));
+    const service = new TaskService({ repoRoot });
+
+    try {
+      const task = await service.newTask({
+        title: "Duplicate Heading",
+        kind: "task",
+        state: "ready",
+        priority: "normal",
+      });
+
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {},
+        unset: [],
+        sections: {
+          overview: ["## Overview", "", "Updated overview details."].join("\n"),
+        },
+      });
+
+      const updated = await service.loadTaskById(task.meta.id);
+      expect(updated.body).toContain("## Overview\n\nUpdated overview details.");
+      expect(updated.body).not.toContain("## Overview\n\n## Overview");
+
+      const warnings = service.drainWarnings();
+      expect(warnings).toHaveLength(1);
+      const [warning] = warnings;
+      expect(warning.code).toBe("section_heading_stripped");
+      expect(warning.field).toBe("overview");
+      expect(warning.file).toBe(task.path);
+      expect(warning.message).toContain("Removed duplicate '## Overview' heading");
+    } finally {
+      await fs.remove(repoRoot);
+    }
+  });
+
+  it("leaves section updates alone when no heading is provided", async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-update-simple-field-"));
+    const service = new TaskService({ repoRoot });
+
+    try {
+      const task = await service.newTask({
+        title: "Simple Section",
+        kind: "task",
+        state: "ready",
+        priority: "normal",
+      });
+
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {},
+        unset: [],
+        sections: {
+          overview: "Plain overview replacement.",
+        },
+      });
+
+      const updated = await service.loadTaskById(task.meta.id);
+      expect(updated.body).toContain("## Overview\n\nPlain overview replacement.");
+
+      const warnings = service.drainWarnings();
+      expect(warnings).toHaveLength(0);
+    } finally {
+      await fs.remove(repoRoot);
+    }
+  });
+
   it("updates timestamps when metadata changes", async () => {
     const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-update-timestamps-"));
     const service = new TaskService({ repoRoot });

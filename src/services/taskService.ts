@@ -344,7 +344,16 @@ export class TaskService {
     } else {
       for (const [sectionId, value] of sectionEntries) {
         const heading = resolveSectionHeading(sectionId);
-        const { body: nextBody, changed, added } = setSectionContent(body, heading, value);
+        const { sanitized, stripped } = stripDuplicateSectionHeading(value, heading);
+        if (stripped) {
+          this.warnings.push({
+            code: "section_heading_stripped",
+            message: `Removed duplicate '${heading}' heading from section update. Omit headings when using --field inputs.`,
+            field: sectionId,
+            file: current.path,
+          });
+        }
+        const { body: nextBody, changed, added } = setSectionContent(body, heading, sanitized);
         sectionChanges.push({ id: sectionId, changed, added });
         if (changed) {
           body = nextBody;
@@ -1579,6 +1588,29 @@ export interface TaskCompleteResult extends TaskMoveResult {}
 
 function ensureTrailingNewline(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
+}
+
+function stripDuplicateSectionHeading(
+  content: string,
+  heading: string,
+): { sanitized: string; stripped: boolean } {
+  const expected = heading.trim();
+  const normalized = content.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
+  if (lines.length === 0) {
+    return { sanitized: normalized, stripped: false };
+  }
+  const [firstLine] = lines;
+  if (firstLine.trim() !== expected) {
+    return { sanitized: normalized, stripped: false };
+  }
+
+  const remaining = lines.slice(1);
+  while (remaining.length > 0 && remaining[0].trim().length === 0) {
+    remaining.shift();
+  }
+
+  return { sanitized: remaining.join("\n"), stripped: true };
 }
 
 function setSectionContent(
