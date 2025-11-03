@@ -326,7 +326,8 @@ taskplain new --title "..." [--kind epic|story|task] [--parent <id>]
 ```bash
 taskplain list [--state ready] [--priority high,urgent]
 taskplain pickup <id>             # Move to in-progress with context
-taskplain complete <id>           # Validate and mark done
+taskplain complete <id> [--check-acs]
+                                # Validate, optionally auto-check acceptance criteria, and mark done
 taskplain update <id> --meta key=value
 taskplain move <id> <state> [--cascade ready|cancel]
 ```

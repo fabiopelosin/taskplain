@@ -1509,6 +1509,7 @@ async function handleComplete(
     output?: string;
     commit?: string;
     closeGh?: string | boolean;
+    checkAcs?: boolean;
   },
 ): Promise<void> {
   const outputFormat = parseHumanJsonOutput(options.output);
@@ -1532,6 +1533,7 @@ async function handleComplete(
 
   const result = await taskService.complete(id, {
     dryRun: options.dryRun,
+    checkAcceptanceCriteria: options.checkAcs === true,
   });
   const warnings = taskService.drainWarnings();
   const changedState = !result.dryRun && result.changed;
@@ -3238,6 +3240,10 @@ program
   .description("Mark a task as done")
   .argument("<id>", "task id to complete")
   .option("--dry-run", "print planned completion without writing")
+  .option(
+    "--check-acs",
+    "mark unchecked acceptance criteria checkboxes as completed before finishing (markdown task list items only)",
+  )
   .option("--output <format>", "human|json", "human")
   .addOption(new Option("--commit <message>").hideHelp())
   .addOption(new Option("--close-gh [number]").hideHelp())

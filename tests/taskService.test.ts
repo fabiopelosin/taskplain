@@ -531,6 +531,81 @@ describe("TaskService.complete", () => {
     }
   });
 
+  it("marks remaining acceptance criteria when requested", async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-complete-acs-"));
+    const service = new TaskService({ repoRoot });
+
+    try {
+      const task = await service.newTask({
+        title: "Acceptance Coverage",
+        kind: "task",
+        state: "in-progress",
+        priority: "high",
+      });
+
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {
+          commit_message: "feat(test): prove acceptance coverage [Task:acceptance-coverage]",
+        },
+        unset: [],
+        sections: {
+          acceptance_criteria: ["- [ ] passes end-to-end check", "- [x] renders summary"].join(
+            "\n",
+          ),
+        },
+      });
+
+      const result = await service.complete(task.meta.id, {
+        checkAcceptanceCriteria: true,
+      });
+
+      expect(result.meta.state).toBe("done");
+
+      const finalDoc = await service.loadTaskById(task.meta.id);
+      expect(finalDoc.meta.state).toBe("done");
+      expect(finalDoc.body).toContain("- [x] passes end-to-end check");
+      expect(finalDoc.body).toContain("- [x] renders summary");
+      expect(finalDoc.body).not.toContain("- [ ] passes end-to-end check");
+    } finally {
+      await fs.remove(repoRoot);
+    }
+  });
+
+  it("does not mutate acceptance criteria without the flag", async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-complete-no-flag-"));
+    const service = new TaskService({ repoRoot });
+
+    try {
+      const task = await service.newTask({
+        title: "Acceptance Baseline",
+        kind: "task",
+        state: "in-progress",
+        priority: "normal",
+      });
+
+      await service.update({
+        id: task.meta.id,
+        metaPatch: {
+          commit_message: "feat(test): baseline coverage [Task:acceptance-baseline]",
+        },
+        unset: [],
+        sections: {
+          acceptance_criteria: "- [ ] updates API status\n- [x] renders success toast",
+        },
+      });
+
+      await service.complete(task.meta.id);
+
+      const finalDoc = await service.loadTaskById(task.meta.id);
+      expect(finalDoc.meta.state).toBe("done");
+      expect(finalDoc.body).toContain("- [ ] updates API status");
+      expect(finalDoc.body).toContain("- [x] renders success toast");
+    } finally {
+      await fs.remove(repoRoot);
+    }
+  });
+
   it("previews completion in dry-run mode without touching disk", async () => {
     const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-complete-dry-run-"));
     const service = new TaskService({ repoRoot });

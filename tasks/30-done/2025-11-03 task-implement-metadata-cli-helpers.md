@@ -2,9 +2,8 @@
 id: implement-metadata-cli-helpers
 title: Implement metadata CLI helpers
 kind: task
-state: in-progress
-commit_message: "feat(cli): add metadata get/set
-  helpers  [Task:implement-metadata-cli-helpers]"
+state: done
+commit_message: "feat(cli): add metadata get/set helpers  [Task:implement-metadata-cli-helpers]"
 priority: normal
 size: medium
 ambiguity: low
@@ -20,10 +19,21 @@ touches:
   - docs/changelog.md
   - README.md
 created_at: 2025-11-03T07:40:19.193Z
-updated_at: 2025-11-03T08:28:25.338Z
-completed_at: null
+updated_at: 2025-11-03T08:30:32.274Z
+completed_at: 2025-11-03T08:30:32.274Z
 links: []
-last_activity_at: 2025-11-03T08:28:25.338Z
+last_activity_at: 2025-11-03T08:30:32.274Z
+execution:
+  attempts:
+    - started_at: 2025-11-03T08:11:26.882Z
+      ended_at: 2025-11-03T08:30:32.561Z
+      duration_seconds: 1145
+      status: completed
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
+      isolation:
+        worktree: false
 ---
 
 ## Overview

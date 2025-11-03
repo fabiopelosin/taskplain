@@ -360,6 +360,9 @@ taskplain pickup fix-mobile-navbar --dry-run
 # Complete task
 taskplain complete fix-mobile-navbar
 
+# Auto-check remaining acceptance criteria checkboxes before finishing
+taskplain complete fix-mobile-navbar --check-acs
+
 # Preview completion
 taskplain complete fix-mobile-navbar --dry-run --output json
 ```
@@ -372,6 +375,7 @@ taskplain complete fix-mobile-navbar --dry-run --output json
    - **Decisions** (optional) - Key choices, rejected alternatives, rationale
    - **Architecture** (optional) - Notable patterns, refactors, structures
 4. Capture the final Conventional Commit subject with `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` (required for completions dated **2025-11-01** or later)
+5. Optionally rely on `--check-acs` when completing to flip any unchecked Markdown checkboxes to done; the flag does not modify narrative text or comments.
 
 ```bash
 # Set commit subject before completion

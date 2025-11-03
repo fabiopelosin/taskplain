@@ -84,7 +84,7 @@ codex exec "Implement task: fix-mobile-navbar"
 taskplain pickup fix-mobile-navbar
 taskplain show fix-mobile-navbar
 # Agent performs the work described in the task
-taskplain complete fix-mobile-navbar
+taskplain complete fix-mobile-navbar --check-acs  # optional flag auto-checks Markdown acceptance criteria
 ```
 
 The CLI provides structured outputs that coding agents and orchestration tools can consume deterministically.

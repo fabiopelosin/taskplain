@@ -1152,6 +1152,10 @@ export class TaskService {
     // Warn if Post-Implementation Insights appears empty or placeholder-only
     this.warnIfInsightsEmpty(current);
 
+    if (options.checkAcceptanceCriteria && !options.dryRun) {
+      await this.markAcceptanceCriteriaComplete(current, timestamp);
+    }
+
     if (options.dryRun) {
       const preview = await this.move(id, "done", { dryRun: true, timestamp });
       return {
@@ -1277,6 +1281,50 @@ export class TaskService {
           `   This enables knowledge extraction during archival.\n\n`,
       );
     }
+  }
+
+  private async markAcceptanceCriteriaComplete(task: TaskDoc, timestamp: string): Promise<boolean> {
+    const heading = resolveSectionHeading("acceptance_criteria");
+    const content = this.extractSectionContent(task.body, heading);
+    if (content === null) {
+      return false;
+    }
+
+    const checkboxPattern = /^(\s*[-*]\s+\[)( |x|X)(\]\s*)(.*)$/gm;
+    let mutated = false;
+    const updatedContent = content.replace(
+      checkboxPattern,
+      (_match, prefix: string, state: string, suffix: string, tail: string) => {
+        if (state === "x") {
+          return `${prefix}x${suffix}${tail}`;
+        }
+        mutated = true;
+        return `${prefix}x${suffix}${tail}`;
+      },
+    );
+
+    if (!mutated) {
+      // No unchecked checkboxes found.
+      return false;
+    }
+
+    const { body: nextBody, changed } = setSectionContent(task.body, heading, updatedContent);
+    if (!changed) {
+      return false;
+    }
+
+    const updatedDoc: TaskDoc = {
+      ...task,
+      body: nextBody,
+      meta: {
+        ...task.meta,
+        updated_at: timestamp,
+        last_activity_at: timestamp,
+      },
+    };
+
+    await writeTaskFile(task.path, updatedDoc);
+    return true;
   }
 
   private extractSectionContent(body: string, heading: string): string | null {
@@ -1510,6 +1558,7 @@ export interface TaskMoveResult {
 
 export interface TaskCompleteOptions {
   dryRun?: boolean;
+  checkAcceptanceCriteria?: boolean;
 }
 
 export interface TaskCompleteResult extends TaskMoveResult {}
