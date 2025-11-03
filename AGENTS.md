@@ -64,7 +64,21 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
    - Update acceptance criteria checkboxes (`- [ ] ...`) every few minutes to show progress
    - Keep task metadata current after each logical change
    - Ensure acceptance criteria are complete before starting—fix gaps immediately
-4. **Finish task**: When all checkboxes are done, run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to store the final subject, fill "Post-Implementation Insights" (Changelog, Decisions, Architecture), then run `taskplain complete <id> --check-acs` whenever you want the CLI to auto-check any remaining acceptance criteria boxes before finalizing. Skip the flag if you need to leave unchecked boxes for follow-up notes. Commit with `[Task:<id>]` trailer once the task is complete
+4. **Finish task**: When all checkboxes are done:
+   - Run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to store the final subject.
+   - Populate the Post-Implementation Insights stubs **before** completing. The default template in `src/docsources/task-template.md` already includes `## Post-Implementation Insights` with `### Changelog`, `### Decisions`, and `### Architecture`—keep those headings and add bullets beneath them.
+   - If you draft insights in a scratch file, load them with `taskplain update <id> --field post_implementation_insights @/tmp/insights.md`. The scratch file should only contain the subsection headings and entries—do **not** re-add the `## Post-Implementation Insights` heading. For example:
+     ```md
+     ### Changelog
+     - Added API contract checks for metadata updates.
+
+     ### Decisions
+     - Reused existing validation helpers; deferred DTO refactor.
+
+     ### Architecture
+     - No structural changes.
+     ```
+   - Run `taskplain complete <id> --check-acs` whenever you want the CLI to auto-check any remaining acceptance criteria boxes before finalizing. Skip the flag if you need to leave unchecked boxes for follow-up notes. Commit with `[Task:<id>]` trailer once the task is complete
 5. **Validate**: Run `taskplain validate` after manual edits to prevent schema violations
 
 **Critical Rules**

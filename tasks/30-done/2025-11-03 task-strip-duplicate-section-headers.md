@@ -3,8 +3,7 @@ id: strip-duplicate-section-headers
 title: Strip duplicate section headers
 kind: task
 state: done
-commit_message: "fix(update): strip duplicate section
-  headings  [Task:strip-duplicate-section-headers]"
+commit_message: "fix(update): strip duplicate section headings  [Task:strip-duplicate-section-headers]"
 priority: normal
 size: medium
 ambiguity: low
@@ -18,6 +17,17 @@ updated_at: 2025-11-03T10:08:14.861Z
 completed_at: 2025-11-03T10:08:14.861Z
 links: []
 last_activity_at: 2025-11-03T10:08:14.861Z
+execution:
+  attempts:
+    - started_at: 2025-11-03T10:00:16.667Z
+      ended_at: 2025-11-03T10:08:15.192Z
+      duration_seconds: 478
+      status: completed
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
+      isolation:
+        worktree: false
 ---
 
 ## Overview
