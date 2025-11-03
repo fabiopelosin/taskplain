@@ -12,7 +12,7 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
    - Ensure acceptance criteria are complete before starting—fix gaps immediately
 4. **Finish task**: When all checkboxes are done:
    - Run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to store the final subject.
-   - Populate the Post-Implementation Insights stubs **before** completing. The default template in `src/docsources/task-template.md` already includes `## Post-Implementation Insights` with `### Changelog`, `### Decisions`, and `### Architecture`—keep those headings and add bullets beneath them.
+   - Populate the Post-Implementation Insights stubs **before** completing. The default template in `src/docsources/task-template.md` already includes `## Post-Implementation Insights` with `### Changelog`, `### Decisions`, and `### Technical Changes`—keep those headings and add bullets beneath them. Cap the Technical Changes bullets at roughly ten lines so reviewers can scan quickly.
    - If you draft insights in a scratch file, load them with `taskplain update <id> --field post_implementation_insights @/tmp/insights.md`. The scratch file should only contain the subsection headings and entries—do **not** re-add the `## Post-Implementation Insights` heading. For example:
      ```md
      ### Changelog
@@ -21,8 +21,9 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
      ### Decisions
      - Reused existing validation helpers; deferred DTO refactor.
 
-     ### Architecture
-     - No structural changes.
+     ### Technical Changes
+     - `src/services/validationService.ts`: Accepts Technical Changes headings when validating tasks.
+     - `docs/cli-playbook.md`: Documented the ≤10 line expectation for Technical Changes summaries.
      ```
    - Run `taskplain complete <id> --check-acs` whenever you want the CLI to auto-check any remaining acceptance criteria boxes before finalizing. Skip the flag if you need to leave unchecked boxes for follow-up notes. Commit with `[Task:<id>]` trailer once the task is complete
 5. **Validate**: Run `taskplain validate` after manual edits to prevent schema violations

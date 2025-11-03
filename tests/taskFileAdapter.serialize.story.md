@@ -44,5 +44,5 @@ last_activity_at: 2024-05-06T07:08:09.123Z
 ### Decisions
 - 
 
-### Architecture
+### Technical Changes
 - 

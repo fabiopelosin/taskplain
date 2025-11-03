@@ -37,7 +37,7 @@ function fullBody(): string {
     "### Decisions",
     "- ",
     "",
-    "### Architecture",
+    "### Technical Changes",
     "- ",
     "",
   ].join("\n");

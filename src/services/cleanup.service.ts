@@ -12,7 +12,7 @@ export interface CleanupOptions {
 export interface ExtractedInsights {
   changelog: string[];
   decisions: string[];
-  architecture: string[];
+  technicalChanges: string[];
 }
 
 export interface CleanupResult {
@@ -45,7 +45,7 @@ export class CleanupService {
     if (validationErrors.length > 0) {
       return {
         cleanedTasks: [],
-        summaries: { changelog: [], decisions: [], architecture: [] },
+        summaries: { changelog: [], decisions: [], technicalChanges: [] },
         errors: validationErrors.map((err) => ({ id: err.taskId, error: err.message })),
       };
     }
@@ -55,7 +55,7 @@ export class CleanupService {
     const allInsights: ExtractedInsights = {
       changelog: [],
       decisions: [],
-      architecture: [],
+      technicalChanges: [],
     };
 
     // Process each candidate task
@@ -63,7 +63,7 @@ export class CleanupService {
       try {
         const insights = this.extractInsights(task);
 
-        // Only Changelog is required; Decisions and Architecture are optional
+        // Only Changelog is required; Decisions and Technical Changes are optional
         if (insights.changelog.length === 0) {
           // Emit warning to stderr for missing changelog
           process.stderr.write(
@@ -74,7 +74,7 @@ export class CleanupService {
         // Accumulate insights (even if some sections are empty)
         allInsights.changelog.push(...insights.changelog);
         allInsights.decisions.push(...insights.decisions);
-        allInsights.architecture.push(...insights.architecture);
+        allInsights.technicalChanges.push(...insights.technicalChanges);
 
         // Delete the task file (unless dry-run)
         if (!options.dryRun) {
@@ -104,7 +104,7 @@ export class CleanupService {
     const result: ExtractedInsights = {
       changelog: [],
       decisions: [],
-      architecture: [],
+      technicalChanges: [],
     };
 
     if (!insightsContent) {
@@ -114,7 +114,13 @@ export class CleanupService {
     // Extract each subsection
     result.changelog = this.extractSubsection(insightsContent, "Changelog", doc.meta.id);
     result.decisions = this.extractSubsection(insightsContent, "Decisions", doc.meta.id);
-    result.architecture = this.extractSubsection(insightsContent, "Architecture", doc.meta.id);
+    const technicalChanges = this.extractSubsection(
+      insightsContent,
+      "Technical Changes",
+      doc.meta.id,
+    );
+    const legacyArchitecture = this.extractSubsection(insightsContent, "Architecture", doc.meta.id);
+    result.technicalChanges = technicalChanges.length > 0 ? technicalChanges : legacyArchitecture;
 
     return result;
   }

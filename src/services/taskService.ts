@@ -16,7 +16,7 @@ import {
   defaultSize,
   type Kind,
   type Priority,
-  postImplementationSubsectionHeadings,
+  recognizedPostImplementationSubsectionHeadings,
   type State,
   type TaskDoc,
   type TaskMeta,
@@ -1271,7 +1271,7 @@ export class TaskService {
       // Section completely missing (shouldn't happen with templates, but handle it)
       process.stderr.write(
         `\n⚠️  Warning: Post-Implementation Insights section is missing.\n` +
-          `   Consider documenting what shipped, decisions made, and architectural changes.\n\n`,
+          `   Document what shipped, key decisions, and the technical changes that landed (≤10 lines).\n\n`,
       );
       return;
     }
@@ -1283,7 +1283,7 @@ export class TaskService {
     if (withoutComments.length === 0) {
       process.stderr.write(
         `\n⚠️  Warning: Post-Implementation Insights section appears empty or incomplete.\n` +
-          `   Fill out Changelog, Decisions, and Architecture subsections with concrete bullet points.\n` +
+          `   Fill out Changelog, Decisions, and Technical Changes subsections with concrete bullet points (≤10 lines for Technical Changes).\n` +
           `   This enables knowledge extraction during archival.\n\n`,
       );
       return;
@@ -1293,14 +1293,14 @@ export class TaskService {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
-    const subheadingSet = new Set<string>(postImplementationSubsectionHeadings);
+    const subheadingSet = new Set<string>(recognizedPostImplementationSubsectionHeadings);
     const hasAnySubheading = lines.some((line) => subheadingSet.has(line));
     const hasMeaningfulContent = lines.some((line) => !subheadingSet.has(line));
 
     if (!hasAnySubheading || !hasMeaningfulContent) {
       process.stderr.write(
         `\n⚠️  Warning: Post-Implementation Insights section appears empty or incomplete.\n` +
-          `   Fill out Changelog, Decisions, and Architecture subsections with concrete bullet points.\n` +
+          `   Fill out Changelog, Decisions, and Technical Changes subsections with concrete bullet points (≤10 lines for Technical Changes).\n` +
           `   This enables knowledge extraction during archival.\n\n`,
       );
     }

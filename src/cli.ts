@@ -933,18 +933,18 @@ async function handleCleanup(options: {
     process.stdout.write("\n");
   }
 
-  if (result.summaries.architecture.length > 0) {
+  if (result.summaries.technicalChanges.length > 0) {
     process.stdout.write(
-      `${colors.bold("🏗️  Architecture Insights")} (${result.summaries.architecture.length}):\n`,
+      `${colors.bold("🛠️  Technical Changes")} (${result.summaries.technicalChanges.length}):\n`,
     );
-    for (const entry of result.summaries.architecture) {
+    for (const entry of result.summaries.technicalChanges) {
       process.stdout.write(`  - ${entry}\n`);
     }
     process.stdout.write("\n");
   }
 
   process.stdout.write(
-    `${formatNote("Tip: copy these summaries into docs such as docs/changelog.md, docs/decisions.md, and docs/architecture.md before you commit.")}\n\n`,
+    `${formatNote("Tip: copy these summaries into docs such as docs/changelog.md, docs/decisions.md, and docs/tech.md before you commit.")}\n\n`,
   );
 
   // Show errors

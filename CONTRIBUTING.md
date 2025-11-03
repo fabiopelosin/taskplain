@@ -33,7 +33,7 @@ The compiled binary lives at `dist/cli.js`. You can run it directly (`node dist/
 3. Move the task to in-progress with `taskplain pickup <id>` before editing any files so state transitions are recorded.
 4. Update the task document as you work—record findings, blockers, and validation results in the appropriate sections.
 5. Run the relevant validation commands (`pnpm verify`, `node dist/cli.js validate`, targeted tests) before marking the task complete.
-6. Capture Post-Implementation Insights (Changelog, Decisions, Architecture) in the task file, then run `taskplain complete <id>`.
+6. Capture Post-Implementation Insights (Changelog, Decisions, Technical Changes ≤10 lines) in the task file, then run `taskplain complete <id>`.
 7. Commit your changes using Conventional Commit syntax with the task trailer (see below), and push your branch for review.
 
 ## Local Commands

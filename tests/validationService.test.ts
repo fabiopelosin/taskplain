@@ -34,8 +34,8 @@ function fullBody(options: { includeInsightsHeading?: boolean } = {}): string {
       "### Decisions",
       "- Recorded trade-offs",
       "",
-      "### Architecture",
-      "- Documented structural changes",
+      "### Technical Changes",
+      "- Documented code-level changes",
       "",
     );
   } else {
@@ -46,7 +46,7 @@ function fullBody(options: { includeInsightsHeading?: boolean } = {}): string {
       "",
       "### Decisions",
       "",
-      "### Architecture",
+      "### Technical Changes",
       "",
     );
   }
@@ -220,7 +220,7 @@ describe("ValidationService.validate", () => {
         "",
         "### Decisions",
         "",
-        "### Architecture",
+        "### Technical Changes",
         "",
       ].join("\n"),
     });
@@ -252,7 +252,7 @@ describe("ValidationService.validate", () => {
         "",
         "### Decisions",
         "",
-        "### Architecture",
+        "### Technical Changes",
         "",
       ].join("\n"),
     });
@@ -283,7 +283,7 @@ describe("ValidationService.validate", () => {
         "",
         "### Decisions",
         "",
-        "### Architecture",
+        "### Technical Changes",
         "",
       ].join("\n"),
     });
@@ -315,7 +315,7 @@ describe("ValidationService.validate", () => {
         "",
         "### Decisions",
         "",
-        "### Architecture",
+        "### Technical Changes",
         "",
       ].join("\n"),
     });

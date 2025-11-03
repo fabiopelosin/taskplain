@@ -233,7 +233,7 @@ When you finish implementation, record the exact Conventional Commit subject (in
 ### Cleanup completed tasks
 
 - Operators run `taskplain cleanup --older-than <Nd|Nm>` to prune done work; start with `--dry-run` to review candidates.
-- Cleanup deletes the task Markdown files after extracting Post-Implementation Insights. Capture changelog, decision, and architecture bullets in the dedicated docs before running it.
+- Cleanup deletes the task Markdown files after extracting Post-Implementation Insights. Capture changelog, decision, and technical changes bullets (≤10 lines) in the dedicated docs before running it.
 - Deleted files remain in Git history for audit and recovery; rely on `git checkout` or `git show` if a past task needs to be resurrected.
 
 ### Dispatch Heuristics

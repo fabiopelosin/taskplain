@@ -43,4 +43,10 @@ last_activity_at: 2024-01-02T03:04:05.678Z
 
 ### Decisions
 
-### Architecture
+### Technical Changes
+
+<!-- Keep this summary to ≤10 lines with engineer-facing bullets that call out files/modules and integrations. Example:
+- `src/services/validationService.ts`: Accepts Technical Changes heading when validating tasks.
+- `docs/cli-playbook.md`: Documented the new Technical Changes subsection in Post-Implementation Insights guidance.
+- `tasks/`: No migrations required; reused existing scaffold helpers.
+-->

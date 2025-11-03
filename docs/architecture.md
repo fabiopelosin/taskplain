@@ -322,7 +322,7 @@ Required headings
 ### Architecture
 ```
 
-The default scaffold now includes empty Post-Implementation subheadings so agents can drop in concise bullets as work ships. Populate **Changelog** before marking a task done, and fill **Decisions**/**Architecture** whenever notable outcomes exist.
+The default scaffold now includes empty Post-Implementation subheadings so agents can drop in concise bullets as work ships. Populate **Changelog** before marking a task done, and fill **Decisions**/**Technical Changes** whenever notable outcomes exist. Keep Technical Changes to roughly ten lines so reviewers can scan the code impact quickly.
 
 State intent
 
@@ -457,7 +457,7 @@ Validation levels
 - Steps:
   1. Scan all tasks, filtering those in `done` older than the requested age threshold
   2. Validate that no active work depends on the candidates and that no active children remain
-  3. Extract Post-Implementation Insights subsections (Changelog, Decisions, Architecture) for downstream documentation
+  3. Extract Post-Implementation Insights subsections (Changelog, Decisions, Technical Changes) for downstream documentation
   4. Delete the underlying Markdown files via `TaskService.deleteTask`, updating parent `children` arrays as needed
 - Warnings are emitted when changelog entries are missing, but cleanup proceeds; operators are expected to finish documentation and rely on Git history for recovery if necessary
 

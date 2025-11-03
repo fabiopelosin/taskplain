@@ -168,8 +168,15 @@ export const postImplementationInsightsHeading = "## Post-Implementation Insight
 export const postImplementationSubsectionHeadings = [
   "### Changelog",
   "### Decisions",
-  "### Architecture",
+  "### Technical Changes",
 ] as const;
+
+export const legacyPostImplementationSubsectionHeadings = ["### Architecture"] as const;
+
+export const recognizedPostImplementationSubsectionHeadings: readonly string[] = [
+  ...postImplementationSubsectionHeadings,
+  ...legacyPostImplementationSubsectionHeadings,
+];
 
 export const postImplementationInsightsScaffold =
   `${postImplementationInsightsHeading}\n\n` +
