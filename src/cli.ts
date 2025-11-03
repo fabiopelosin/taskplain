@@ -1388,7 +1388,7 @@ async function handleList(options: {
   output?: string;
 }): Promise<void> {
   const outputFormat = parseHumanJsonOutput(options.output);
-  const { taskService } = await getTaskCommandContext();
+  const { repoRoot, taskService } = await getTaskCommandContext();
   const query = await taskService.query();
 
   if (options.blocked && options.unblocked) {
@@ -1431,13 +1431,18 @@ async function handleList(options: {
         isolation: isolationFilter,
       })
       .filter((item) => allowed.has(item.state));
+    const warnings = taskService.drainWarnings();
 
     if (outputFormat === "json") {
-      process.stdout.write(`${JSON.stringify({ items: openItems }, null, 2)}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ items: openItems, warnings: warningsToJson(warnings, repoRoot) }, null, 2)}\n`,
+      );
       return;
     }
 
-    return renderListTable(openItems);
+    renderListTable(openItems);
+    printWarningsHuman(warnings, repoRoot);
+    return;
   }
 
   const items = query.list({
@@ -1453,18 +1458,23 @@ async function handleList(options: {
     blocked: blockedFilter,
     openStatesOnly: openOnly,
   });
+  const warnings = taskService.drainWarnings();
 
   if (outputFormat === "json") {
-    process.stdout.write(`${JSON.stringify({ items }, null, 2)}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ items, warnings: warningsToJson(warnings, repoRoot) }, null, 2)}\n`,
+    );
     return;
   }
 
   if (items.length === 0) {
     process.stdout.write(`${formatNote("No tasks match the provided filters.")}\n`);
+    printWarningsHuman(warnings, repoRoot);
     return;
   }
 
   renderListTable(items);
+  printWarningsHuman(warnings, repoRoot);
 }
 
 // --- Web server deterministic port allocation helpers ---
@@ -2243,8 +2253,15 @@ async function handleTree(
         search: options.search,
         readyOnly: options.readyOnly === true,
       });
+      const warnings = taskService.drainWarnings();
       if (outputFormat === "json") {
-        process.stdout.write(`${JSON.stringify({ states: openTree }, null, 2)}\n`);
+        process.stdout.write(
+          `${JSON.stringify(
+            { states: openTree, warnings: warningsToJson(warnings, repoRoot) },
+            null,
+            2,
+          )}\n`,
+        );
         return;
       }
       printOpenTree(openTree, {
@@ -2254,19 +2271,24 @@ async function handleTree(
         compact,
         repoRoot,
       });
+      printWarningsHuman(warnings, repoRoot);
       return;
     }
 
     const tree = query.buildTree(id);
+    const warnings = taskService.drainWarnings();
 
     if (outputFormat === "json") {
-      process.stdout.write(`${JSON.stringify({ tree }, null, 2)}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ tree, warnings: warningsToJson(warnings, repoRoot) }, null, 2)}\n`,
+      );
       return;
     }
 
     for (const node of tree) {
       printTreeNode(node, 0);
     }
+    printWarningsHuman(warnings, repoRoot);
   } finally {
     if (enforceNoColor) {
       setColorMode(previousColorMode);

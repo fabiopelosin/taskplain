@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "fs-extra";
+import { ZodError, type ZodIssue } from "zod";
 
 import type { GitAdapter } from "../adapters/gitAdapter";
 import { readTaskFile, type TaskFileReadResult, writeTaskFile } from "../adapters/taskFile";
@@ -112,15 +113,22 @@ export class TaskService {
 
   async loadTaskById(id: string): Promise<TaskDoc> {
     const all = await this.listAllTaskFiles();
+    const skipped: string[] = [];
     for (const filePath of all) {
-      const { doc, warnings } = await this.readTaskFileWithWarnings(filePath);
-      if (doc.meta.id === id) {
+      try {
+        const { doc, warnings } = await this.readTaskFileWithWarnings(filePath);
+        if (doc.meta.id === id) {
+          this.recordWarnings(warnings, doc.path);
+          return doc;
+        }
         this.recordWarnings(warnings, doc.path);
-        return doc;
+      } catch (error) {
+        skipped.push(filePath);
+        this.recordTaskReadError(filePath, error);
       }
-      this.recordWarnings(warnings, doc.path);
     }
-    throw new Error(`Task with id ${id} not found`);
+    const suffix = skipped.length > 0 ? ` (skipped ${skipped.length} invalid file${skipped.length === 1 ? "" : "s"})` : "";
+    throw new Error(`Task with id ${id} not found${suffix}`);
   }
 
   async listAllTaskFiles(): Promise<string[]> {
@@ -152,9 +160,13 @@ export class TaskService {
     const files = await this.listAllTaskFiles();
     const docs: TaskDoc[] = [];
     for (const filePath of files) {
-      const { doc, warnings } = await this.readTaskFileWithWarnings(filePath);
-      docs.push(doc);
-      this.recordWarnings(warnings, doc.path);
+      try {
+        const { doc, warnings } = await this.readTaskFileWithWarnings(filePath);
+        docs.push(doc);
+        this.recordWarnings(warnings, doc.path);
+      } catch (error) {
+        this.recordTaskReadError(filePath, error);
+      }
     }
     return docs;
   }
@@ -1280,6 +1292,83 @@ export class TaskService {
 
   private async readTaskFileWithWarnings(filePath: string): Promise<TaskFileReadResult> {
     return readTaskFile(filePath);
+  }
+
+  private describeIssue(issue: ZodIssue): string {
+    if (issue.code === "invalid_union" && Array.isArray(issue.path)) {
+      const [root, index, leaf] = issue.path;
+      if (root === "links" && typeof index === "number" && leaf === "type") {
+        return "Unsupported link type. Allowed values: github_issue, linear. Reference local docs within the task body instead.";
+      }
+    }
+
+    return issue.message;
+  }
+
+  private recordTaskReadError(filePath: string, error: unknown): void {
+    if (error instanceof ZodError) {
+      const issues = error.issues ?? [];
+      if (issues.length === 0) {
+        this.warnings.push({
+          code: "parse_failed",
+          message: `Unable to parse task metadata: ${error.message}`,
+          file: filePath,
+        });
+        return;
+      }
+
+      const summaries: string[] = [];
+      let candidateField: string | undefined;
+      if (issues.length === 1) {
+        candidateField = this.formatIssuePath(issues[0].path);
+      }
+
+      for (const issue of issues) {
+        const pathLabel = this.formatIssuePath(issue.path);
+        const issueMessage = this.describeIssue(issue);
+        const detail = pathLabel ? `${pathLabel}: ${issueMessage}` : issueMessage;
+        summaries.push(detail);
+      }
+
+      const message = summaries.join("; ");
+      this.warnings.push({
+        code: "parse_failed",
+        message: `Unable to parse task metadata: ${message}`,
+        field: candidateField,
+        file: filePath,
+      });
+      return;
+    }
+
+    const fallbackMessage =
+      error instanceof Error && typeof error.message === "string"
+        ? error.message
+        : String(error);
+    this.warnings.push({
+      code: "read_failed",
+      message: `Unable to read task file: ${fallbackMessage}`,
+      file: filePath,
+    });
+  }
+
+  private formatIssuePath(pathSegments: PropertyKey[]): string | undefined {
+    if (!Array.isArray(pathSegments) || pathSegments.length === 0) {
+      return undefined;
+    }
+    let result = "";
+    for (const segment of pathSegments) {
+      if (typeof segment === "number") {
+        result += `[${segment}]`;
+      } else {
+        const segmentText =
+          typeof segment === "string" ? segment : segment === undefined ? "" : String(segment);
+        if (segmentText.length === 0) {
+          continue;
+        }
+        result += result.length === 0 ? segmentText : `.${segmentText}`;
+      }
+    }
+    return result.length > 0 ? result : undefined;
   }
 
   private recordWarnings(warnings: NormalizationWarning[], filePath: string): void {

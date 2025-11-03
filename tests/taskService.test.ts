@@ -396,6 +396,87 @@ describe("TaskService.move", () => {
   });
 });
 
+describe("TaskService handling of invalid files", () => {
+  it("skips invalid metadata files with warnings when listing", async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-invalid-meta-"));
+    const service = new TaskService({ repoRoot });
+
+    try {
+      const valid = await service.newTask({
+        title: "Valid Task",
+        kind: "task",
+        state: "idea",
+        priority: "normal",
+      });
+
+      const invalidDir = path.join(repoRoot, "tasks", "00-idea");
+      await fs.ensureDir(invalidDir);
+      const invalidPath = path.join(invalidDir, "task-invalid-links.md");
+
+      const invalidContent = `---\n` +
+        `id: task-invalid-links\n` +
+        `title: Invalid Links\n` +
+        `kind: task\n` +
+        `state: idea\n` +
+        `priority: normal\n` +
+        `created_at: 2025-11-03T00:00:00.000Z\n` +
+        `updated_at: 2025-11-03T00:00:00.000Z\n` +
+        `last_activity_at: 2025-11-03T00:00:00.000Z\n` +
+        `links:\n` +
+        `  - type: file\n` +
+        `    url: ./example.md\n` +
+        `---\n\n` +
+        `## Overview\n` +
+        `Invalid placeholder.\n\n` +
+        `## Acceptance Criteria\n` +
+        `- [ ] placeholder\n\n` +
+        `## Technical Approach\n` +
+        `TBD\n`;
+
+      await fs.writeFile(invalidPath, invalidContent, "utf8");
+
+      const docs = await service.listAllTasks();
+      const ids = docs.map((doc) => doc.meta.id);
+      expect(ids).toContain(valid.meta.id);
+      expect(ids).not.toContain("task-invalid-links");
+
+      const warnings = service.drainWarnings();
+      expect(warnings.length).toBeGreaterThan(0);
+      const parseWarning = warnings.find((warning) => warning.code === "parse_failed");
+      expect(parseWarning).toBeDefined();
+      expect(parseWarning?.file).toBe(invalidPath);
+      expect(parseWarning?.message).toContain("links[0].type");
+      expect(parseWarning?.message).toContain("Unsupported link type");
+      expect(parseWarning?.field).toBe("links[0].type");
+    } finally {
+      await fs.remove(repoRoot);
+    }
+  });
+
+  it("reports skipped invalid files when loading missing tasks", async () => {
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "taskplain-invalid-read-"));
+    const service = new TaskService({ repoRoot });
+
+    try {
+      const invalidDir = path.join(repoRoot, "tasks", "00-idea");
+      await fs.ensureDir(invalidDir);
+      const invalidPath = path.join(invalidDir, "broken-frontmatter.md");
+      await fs.writeFile(invalidPath, "---\n[[\n---\n", "utf8");
+
+      await expect(service.loadTaskById("missing-task"))
+        .rejects.toThrow("skipped 1 invalid file");
+
+      const warnings = service.drainWarnings();
+      const readWarning = warnings.find((warning) => warning.code === "read_failed");
+      expect(readWarning).toBeDefined();
+      expect(readWarning?.file).toBe(invalidPath);
+      expect(readWarning?.message).toContain("Unable to read task file");
+    } finally {
+      await fs.remove(repoRoot);
+    }
+  });
+});
+
 describe("TaskService.complete", () => {
   beforeEach(() => {
     vi.useFakeTimers();
