@@ -64,7 +64,7 @@ All work must flow through the Taskplain CLI to keep task history in-repo and de
    - Update acceptance criteria checkboxes (`- [ ] ...`) every few minutes to show progress
    - Keep task metadata current after each logical change
    - Ensure acceptance criteria are complete before starting—fix gaps immediately
-4. **Finish task**: When all checkboxes are done, run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to store the final subject, fill "Post-Implementation Insights" (Changelog, Decisions, Architecture), run `taskplain complete <id>`, then commit with `[Task:<id>]` trailer
+4. **Finish task**: When all checkboxes are done, run `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` to store the final subject, fill "Post-Implementation Insights" (Changelog, Decisions, Architecture), then run `taskplain complete <id> --check-acs` whenever you want the CLI to auto-check any remaining acceptance criteria boxes before finalizing. Skip the flag if you need to leave unchecked boxes for follow-up notes. Commit with `[Task:<id>]` trailer once the task is complete
 5. **Validate**: Run `taskplain validate` after manual edits to prevent schema violations
 
 **Critical Rules**
@@ -99,6 +99,47 @@ Lifecycle:
 - `taskplain move <id> <state> [--cascade ready|cancel]` — change state (default: no cascade)
 - `taskplain complete <id>` — finish task and timestamp completion
 - `taskplain delete <id> [--dry-run]` — remove task
+
+Metadata helpers:
+- Inspect canonical metadata JSON for copy/paste edits:
+  ```bash
+  taskplain metadata get hero-cta --output json
+  ```
+  ```json
+  {
+    "id": "hero-cta",
+    "meta": {
+      "id": "hero-cta",
+      "title": "Polish CTA wording",
+      "kind": "task",
+      "state": "in-progress",
+      "priority": "normal",
+      "size": "small",
+      "ambiguity": "low",
+      "executor": "standard",
+      "isolation": "module",
+      "touches": [],
+      "depends_on": [],
+      "blocks": [],
+      "assignees": [],
+      "labels": [],
+      "created_at": "2025-01-03T09:15:00.000Z",
+      "updated_at": "2025-01-04T12:30:00.000Z",
+      "completed_at": null,
+      "links": [],
+      "last_activity_at": "2025-01-04T12:30:00.000Z",
+      "execution": null
+    },
+    "warnings": []
+  }
+  ```
+- Pipe a partial fragment to update a single field without rewriting the file:
+  ```bash
+  taskplain metadata get hero-cta --output json \
+    | jq '.meta | {priority: "urgent"}' \
+    | taskplain metadata set hero-cta
+  ```
+  The CLI merges the provided JSON, so untouched metadata stays as-is.
 
 Maintenance:
 - `taskplain validate [--fix] [--rename-files] [--strict]` — check/repair schema

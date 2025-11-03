@@ -2,7 +2,7 @@
 id: auto-check-acs-on-complete
 title: Auto-check ACs on complete
 kind: task
-state: in-progress
+state: done
 commit_message: "feat(complete): auto-check acceptance criteria  [Task:auto-check-acs-on-complete]"
 priority: normal
 size: medium
@@ -20,22 +20,29 @@ touches:
   - tests/completeCli.test.ts
   - tests/__snapshots__/canonical.test.ts.snap
 created_at: 2025-11-03T07:40:22.300Z
-updated_at: 2025-11-03T08:41:35.134Z
-completed_at: null
+updated_at: 2025-11-03T08:45:59.673Z
+completed_at: 2025-11-03T08:45:59.673Z
 links: []
-last_activity_at: 2025-11-03T08:41:35.134Z
+last_activity_at: 2025-11-03T08:45:59.673Z
 execution:
   attempts:
     - started_at: 2025-11-03T08:30:32.795Z
       ended_at: 2025-11-03T08:43:22.311Z
       duration_seconds: 769
       status: failed
+      error_reason: Agent output did not include the __DONE__ finish token.
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
+    - started_at: 2025-11-03T08:43:22.313Z
+      ended_at: 2025-11-03T08:45:59.969Z
+      duration_seconds: 157
+      status: completed
       executor:
         tool: agent-driver
         model: gpt-5-codex
       isolation:
         worktree: false
-      error_reason: Agent output did not include the __DONE__ finish token.
 ---
 
 ## Overview
