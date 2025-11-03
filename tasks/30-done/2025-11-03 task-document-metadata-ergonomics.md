@@ -2,9 +2,8 @@
 id: document-metadata-ergonomics
 title: Document metadata ergonomics
 kind: task
-state: in-progress
-commit_message: "docs(handbook): document metadata
-  helpers  [Task:document-metadata-ergonomics]"
+state: done
+commit_message: "docs(handbook): document metadata helpers  [Task:document-metadata-ergonomics]"
 priority: normal
 size: medium
 ambiguity: low
@@ -17,10 +16,21 @@ depends_on:
   - implement-metadata-cli-helpers
   - auto-check-acs-on-complete
 created_at: 2025-11-03T07:40:28.329Z
-updated_at: 2025-11-03T08:50:10.412Z
-completed_at: null
+updated_at: 2025-11-03T08:51:56.129Z
+completed_at: 2025-11-03T08:51:56.129Z
 links: []
-last_activity_at: 2025-11-03T08:50:10.412Z
+last_activity_at: 2025-11-03T08:51:56.129Z
+execution:
+  attempts:
+    - started_at: 2025-11-03T08:46:00.209Z
+      ended_at: 2025-11-03T08:51:56.417Z
+      duration_seconds: 356
+      status: completed
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
+      isolation:
+        worktree: false
 ---
 
 ## Overview

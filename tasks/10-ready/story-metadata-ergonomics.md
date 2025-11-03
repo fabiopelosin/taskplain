@@ -6,34 +6,48 @@ children:
   - implement-metadata-cli-helpers
   - auto-check-acs-on-complete
   - document-metadata-ergonomics
+  - warn-on-checked-acs
+  - simplify-insights-template
+  - handbook-insights-guidance
+  - strip-duplicate-section-headers
 state: ready
+commit_message: "docs(story): finalize metadata ergonomics summary  [Task:metadata-ergonomics]"
 priority: normal
 size: medium
 ambiguity: low
 executor: standard
 isolation: module
 created_at: 2025-11-03T07:40:11.727Z
-updated_at: 2025-11-03T08:11:26.794Z
+updated_at: 2025-11-03T09:10:39.282Z
 completed_at: null
 links: []
-last_activity_at: 2025-11-03T08:11:26.794Z
+last_activity_at: 2025-11-03T09:10:39.282Z
+execution:
+  attempts:
+    - started_at: 2025-11-03T08:51:56.645Z
+      ended_at: 2025-11-03T08:54:55.283Z
+      duration_seconds: 178
+      status: completed
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
 ---
 
 ## Overview
 
-Coordinate a light-touch ergonomics initiative so agents can inspect and edit Taskplain metadata, and close out acceptance criteria, with minimal ceremony. This story gathers the CLI enhancements and handbook update needed to land the improvements together.
+Coordinate a light-touch ergonomics initiative so agents can inspect and edit Taskplain metadata, close out acceptance criteria, and capture insights with minimal ceremony. Following the first wave of improvements, the story now tracks validation warnings, streamlined templates, and refreshed guidance discovered during implementation.
 
 ## Acceptance Criteria
 
-- [ ] JSON metadata helper and AC auto-check subtasks are defined, sized, and in ready state.
-- [ ] Documentation subtask references the new commands and sits in ready state.
-- [ ] Story captures integration risks and handoffs so successors can schedule implementation confidently.
+- [ ] Subtasks for metadata helpers, AC auto-check, validation warning, template trim, header stripping, and handbook guidance are in ready state with clear deliverables.
+- [ ] Dependencies between CLI/template changes and documentation are captured so sequencing is obvious.
+- [ ] Story records any blockers uncovered while landing these subtasks.
 
 ## Technical Approach
 
-- Track dependencies between CLI work and documentation so the handbook update lands after the commands ship.
-- Revisit story size/priority once subtasks provide concrete estimates.
-- Capture any follow-up work (e.g., additional flags) as new idea tasks rather than expanding this story.
+- Sequence remaining work: validation warning → template trim → handbook update.
+- Monitor impacts on existing CLI flows and adjust scope if new ergonomics gaps appear.
+- Capture any additional ideas as separate tasks instead of expanding this story.
 
 <!--
 ## Post-Implementation Insights
