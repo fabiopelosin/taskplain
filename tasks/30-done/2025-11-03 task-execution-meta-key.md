@@ -2,7 +2,7 @@
 id: execution-meta-key
 title: Execution meta key
 kind: task
-state: in-progress
+state: done
 commit_message: "fix(normalization): accept execution telemetry  [Task:execution-meta-key]"
 priority: normal
 size: small
@@ -13,10 +13,21 @@ touches:
   - src/domain/normalization.ts
   - tests/taskFileAdapter.test.ts
 created_at: 2025-11-03T06:19:14.545Z
-updated_at: 2025-11-03T07:56:12.075Z
-completed_at: null
+updated_at: 2025-11-03T07:57:23.702Z
+completed_at: 2025-11-03T07:57:23.702Z
 links: []
-last_activity_at: 2025-11-03T07:56:12.075Z
+last_activity_at: 2025-11-03T07:57:23.702Z
+execution:
+  attempts:
+    - started_at: 2025-11-03T07:52:55.803Z
+      ended_at: 2025-11-03T07:57:24.009Z
+      duration_seconds: 268
+      status: completed
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
+      isolation:
+        worktree: false
 ---
 
 ## Overview

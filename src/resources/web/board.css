@@ -1459,22 +1459,69 @@ main {
 }
 
 .body-preview pre {
+  margin: 0.75rem 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.body-preview pre.body-code-block {
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 0.6rem;
   padding: 0.75rem;
-  overflow-x: auto;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.78rem;
-  line-height: 1.5;
-  margin: 0.75rem 0;
+  line-height: 1.55;
+  max-height: min(28rem, max(12rem, calc(100vh - 14rem)));
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(226, 232, 240, 0.7) transparent;
 }
 
-.body-preview code {
+.body-preview pre.body-code-block:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.55);
+  outline-offset: 2px;
+}
+
+.body-preview pre.body-code-block::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.body-preview pre.body-code-block::-webkit-scrollbar-thumb {
+  background: rgba(226, 232, 240, 0.7);
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.body-preview pre.body-code-block::-webkit-scrollbar-thumb:hover {
+  background: rgba(241, 245, 249, 0.85);
+}
+
+.body-preview pre.body-code-block::-webkit-scrollbar-thumb:active {
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.body-preview :not(pre) > code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   background: rgba(15, 23, 42, 0.55);
   border-radius: 0.4rem;
   padding: 0.1rem 0.35rem;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.body-preview pre.body-code-block code.body-code-block__code {
+  display: inline-block;
+  min-width: 100%;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  white-space: pre;
+  overflow-wrap: normal;
 }
 
 .body-preview table {

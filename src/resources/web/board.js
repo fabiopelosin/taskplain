@@ -2440,6 +2440,17 @@
           item.appendChild(label);
         }
       });
+      const codeBlocks = template.content.querySelectorAll("pre");
+      codeBlocks.forEach((block) => {
+        block.classList.add("body-code-block");
+        if (!block.hasAttribute("tabindex")) {
+          block.setAttribute("tabindex", "0");
+        }
+        const codeElement = block.querySelector("code");
+        if (codeElement) {
+          codeElement.classList.add("body-code-block__code");
+        }
+      });
       return template.innerHTML;
     };
     if (window.marked && typeof window.marked.parse === "function") {
@@ -2471,8 +2482,10 @@
         return;
       }
       const content = escape(codeLines.join("\n"));
-      const langAttr = codeLang ? ` class="language-${escapeAttr(codeLang)}"` : "";
-      htmlParts.push(`<pre><code${langAttr}>${content}</code></pre>`);
+      const languageClass = codeLang ? ` language-${escapeAttr(codeLang)}` : "";
+      htmlParts.push(
+        `<pre class="body-code-block" tabindex="0"><code class="body-code-block__code${languageClass}">${content}</code></pre>`,
+      );
       inCodeBlock = false;
       codeLang = "";
       codeLines.length = 0;
