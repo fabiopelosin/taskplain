@@ -28,14 +28,7 @@ function fullBody(): string {
     "## Technical Approach",
     "- Exercise adapter helpers",
     "",
-    "<!--",
     "## Post-Implementation Insights",
-    "",
-    "> Uncomment this section when moving the task to `done` so completions include the knowledge we extracted.",
-    "> Capture discoveries, decisions, and architecture updates with concrete bullet points.",
-    "> - **Changelog** (required): Summarize what shipped using Keep a Changelog verbs.",
-    "> - **Decisions** (optional): Note key choices, rejected alternatives, and rationale.",
-    "> - **Architecture** (optional): Document notable patterns, refactors, or new structures.",
     "",
     "### Changelog",
     "- Coverage-focused fixtures",
@@ -46,7 +39,6 @@ function fullBody(): string {
     "",
     "### Architecture",
     "- ",
-    "-->",
     "",
   ].join("\n");
 }

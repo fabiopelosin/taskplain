@@ -31,9 +31,24 @@ function fullBody(options: { includeInsightsHeading?: boolean } = {}): string {
       "### Changelog",
       "- Captured learnings",
       "",
+      "### Decisions",
+      "- Recorded trade-offs",
+      "",
+      "### Architecture",
+      "- Documented structural changes",
+      "",
     );
   } else {
-    sections.push("<!-- ## Post-Implementation Insights -->", "");
+    sections.push(
+      "## Post-Implementation Insights",
+      "",
+      "### Changelog",
+      "",
+      "### Decisions",
+      "",
+      "### Architecture",
+      "",
+    );
   }
 
   return sections.join("\n");
@@ -137,8 +152,6 @@ describe("ValidationService.validate", () => {
       "",
       "## Technical Approach",
       "",
-      "<!-- ## Post-Implementation Insights -->",
-      "",
     ].join("\n");
     const doc = buildDoc({
       id: "task-missing-insights",
@@ -201,7 +214,13 @@ describe("ValidationService.validate", () => {
         "",
         "## Technical Approach",
         "",
-        "<!-- ## Post-Implementation Insights -->",
+        "## Post-Implementation Insights",
+        "",
+        "### Changelog",
+        "",
+        "### Decisions",
+        "",
+        "### Architecture",
         "",
       ].join("\n"),
     });
@@ -227,7 +246,13 @@ describe("ValidationService.validate", () => {
         "",
         "## Technical Approach",
         "",
-        "<!-- ## Post-Implementation Insights -->",
+        "## Post-Implementation Insights",
+        "",
+        "### Changelog",
+        "",
+        "### Decisions",
+        "",
+        "### Architecture",
         "",
       ].join("\n"),
     });
@@ -252,7 +277,13 @@ describe("ValidationService.validate", () => {
         "",
         "## Technical Approach",
         "",
-        "<!-- ## Post-Implementation Insights -->",
+        "## Post-Implementation Insights",
+        "",
+        "### Changelog",
+        "",
+        "### Decisions",
+        "",
+        "### Architecture",
         "",
       ].join("\n"),
     });
@@ -278,7 +309,13 @@ describe("ValidationService.validate", () => {
         "",
         "## Technical Approach",
         "",
-        "<!-- ## Post-Implementation Insights -->",
+        "## Post-Implementation Insights",
+        "",
+        "### Changelog",
+        "",
+        "### Decisions",
+        "",
+        "### Architecture",
         "",
       ].join("\n"),
     });

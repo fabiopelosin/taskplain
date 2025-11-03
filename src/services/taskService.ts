@@ -16,6 +16,7 @@ import {
   defaultSize,
   type Kind,
   type Priority,
+  postImplementationSubsectionHeadings,
   type State,
   type TaskDoc,
   type TaskMeta,
@@ -1269,12 +1270,25 @@ export class TaskService {
     // Check if content looks like placeholder or is nearly empty
     const trimmed = insightsContent.trim();
     const withoutComments = trimmed.replace(/<!--[\s\S]*?-->/g, "").trim();
-    const hasSubsections = /###\s+(Changelog|Decisions|Architecture)/i.test(withoutComments);
-    const contentLines = withoutComments
-      .split("\n")
-      .filter((line) => line.trim() && !line.trim().startsWith("-") && line.trim() !== "-");
 
-    if (!hasSubsections || contentLines.length === 0) {
+    if (withoutComments.length === 0) {
+      process.stderr.write(
+        `\n⚠️  Warning: Post-Implementation Insights section appears empty or incomplete.\n` +
+          `   Fill out Changelog, Decisions, and Architecture subsections with concrete bullet points.\n` +
+          `   This enables knowledge extraction during archival.\n\n`,
+      );
+      return;
+    }
+
+    const lines = withoutComments
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const subheadingSet = new Set<string>(postImplementationSubsectionHeadings);
+    const hasAnySubheading = lines.some((line) => subheadingSet.has(line));
+    const hasMeaningfulContent = lines.some((line) => !subheadingSet.has(line));
+
+    if (!hasAnySubheading || !hasMeaningfulContent) {
       process.stderr.write(
         `\n⚠️  Warning: Post-Implementation Insights section appears empty or incomplete.\n` +
           `   Fill out Changelog, Decisions, and Architecture subsections with concrete bullet points.\n` +

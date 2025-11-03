@@ -316,10 +316,13 @@ Required headings
 ## Overview
 ## Acceptance Criteria
 ## Technical Approach
-<!-- ## Post-Implementation Insights -->
+## Post-Implementation Insights
+### Changelog
+### Decisions
+### Architecture
 ```
 
-The default scaffold comments out `## Post-Implementation Insights` so active work focuses on execution details. When the task moves to `done`, uncomment that heading and capture Changelog/Decisions/Architecture bullets before running `taskplain complete`. Validation enforces the heading only once the task reaches `done`, so the commented scaffold passes earlier state checks.
+The default scaffold now includes empty Post-Implementation subheadings so agents can drop in concise bullets as work ships. Populate **Changelog** before marking a task done, and fill **Decisions**/**Architecture** whenever notable outcomes exist.
 
 State intent
 

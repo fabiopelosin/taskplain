@@ -3,8 +3,7 @@ id: warn-on-checked-acs
 title: Warn on checked ACs
 kind: task
 state: done
-commit_message: "feat(validation): warn on in-progress acceptance
-  criteria  [Task:warn-on-checked-acs]"
+commit_message: "feat(validation): warn on in-progress acceptance criteria  [Task:warn-on-checked-acs]"
 priority: normal
 size: medium
 ambiguity: low
@@ -18,6 +17,17 @@ updated_at: 2025-11-03T09:28:03.445Z
 completed_at: 2025-11-03T09:28:03.445Z
 links: []
 last_activity_at: 2025-11-03T09:28:03.445Z
+execution:
+  attempts:
+    - started_at: 2025-11-03T09:18:38.277Z
+      ended_at: 2025-11-03T09:28:03.796Z
+      duration_seconds: 565
+      status: completed
+      executor:
+        tool: agent-driver
+        model: gpt-5-codex
+      isolation:
+        worktree: false
 ---
 
 ## Overview

@@ -203,14 +203,18 @@ Brief description of what needs to be done and why.
 
 Implementation strategy, key decisions, architectural considerations.
 
-<!-- ## Post-Implementation Insights -->
-<!-- Uncomment and fill before marking complete:
-- What actually changed
-- Decisions made during implementation
-- Architectural impacts
--->
+## Post-Implementation Insights
 
-`taskplain validate` only requires the insights heading once the task is in the `done` state; the commented scaffold lets idea/ready/in-progress work pass without manual edits.
+### Changelog
+- What actually changed (required)
+
+### Decisions
+- Key choices or rejected alternatives (optional)
+
+### Architecture
+- Structural shifts or notable refactors (optional)
+
+Idea/ready/in-progress work can leave the stub empty. Populate these sections—at least one bullet under **Changelog**—before moving the task to `done`.
 
 When you finish implementation, record the exact Conventional Commit subject (including the `[Task:<id>]` trailer) using `taskplain update <id> --meta commit_message="…"`. Automations read the value with `yq -r '.commit_message' <task.md>` to author the closing commit, and `taskplain validate` enforces the field for tasks completed on or after **2025-11-01**.
 ```

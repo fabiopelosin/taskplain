@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { GitAdapter } from "../src/adapters/gitAdapter";
 import { writeTaskFile } from "../src/adapters/taskFile";
 import { stateDir } from "../src/domain/paths";
+import { postImplementationInsightsScaffold } from "../src/domain/types";
 import { FixService } from "../src/services/fixService";
 import { TaskService } from "../src/services/taskService";
 
@@ -106,6 +107,47 @@ describe("FixService", () => {
     expect(repaired.body).toContain("## Technical Approach");
   });
 
+  it("updates legacy Post-Implementation Insights comment to scaffold", async () => {
+    const repoRoot = await makeRepo();
+    const taskService = new TaskService({ repoRoot });
+    const created = await taskService.newTask({
+      title: "Legacy insights comment",
+      kind: "story",
+      state: "idea",
+      priority: "normal",
+    });
+
+    const legacyComment = [
+      "<!--",
+      "## Post-Implementation Insights",
+      "",
+      "### Changelog",
+      "Required: Summarize shipped behavior.",
+      "",
+      "### Decisions",
+      "Optional: Record key choices.",
+      "",
+      "### Architecture",
+      "Optional: Outline structural updates.",
+      "-->",
+    ].join("\n");
+
+    const legacyBody = created.body.replace(
+      /\n## Post-Implementation Insights[\s\S]*$/m,
+      `\n${legacyComment}\n`,
+    );
+    await writeTaskFile(created.path, { ...created, body: legacyBody });
+
+    const fixer = new FixService({ repoRoot, taskService });
+    const summary = await fixer.fixIds([created.meta.id]);
+    const result = summary.items[0];
+    expect(result.changed).toBe(true);
+
+    const repaired = await taskService.getTask(created.path);
+    expect(repaired.body).toContain(postImplementationInsightsScaffold);
+    expect(repaired.body).not.toContain("<!--");
+  });
+
   it("leaves acceptance criteria instructions as comments rather than empty checkboxes", async () => {
     const repoRoot = await makeRepo();
     const taskService = new TaskService({ repoRoot });
@@ -159,10 +201,7 @@ describe("FixService", () => {
       `${doneDate} ${created.meta.kind}-${created.meta.id}.md`,
     );
     await fs.ensureDir(path.dirname(donePath));
-    const strippedBody = created.body.replace(
-      /<!--[\s\S]*?Post-Implementation Insights[\s\S]*?-->\s*/m,
-      "",
-    );
+    const strippedBody = created.body.replace(/\n## Post-Implementation Insights[\s\S]*$/m, "\n");
     const doneDoc = {
       ...created,
       meta: {

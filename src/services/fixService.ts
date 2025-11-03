@@ -7,7 +7,13 @@ import type { GitAdapter } from "../adapters/gitAdapter";
 import { orderTaskMeta, serializeTaskDoc, writeTaskFile } from "../adapters/taskFile";
 import { activeName, doneName, stateDir } from "../domain/paths";
 import { resolveSectionHeading } from "../domain/sections";
-import { requiredHeadingsForState, type State, type TaskDoc, type TaskMeta } from "../domain/types";
+import {
+  postImplementationInsightsScaffold,
+  requiredHeadingsForState,
+  type State,
+  type TaskDoc,
+  type TaskMeta,
+} from "../domain/types";
 import { nowUtc } from "../utils/time";
 import { buildRankingContext, compareTasks } from "./taskRanking";
 import type { TaskService, TaskWarning } from "./taskService";
@@ -203,8 +209,14 @@ export class FixService {
       changes.push("normalized front matter order");
     }
 
+    const { body: migratedBody, changed: migratedInsights } =
+      this.migratePostImplementationScaffold(doc.body);
+    if (migratedInsights) {
+      changes.push("updated Post-Implementation Insights scaffold");
+    }
+
     const { body: normalizedHeadings, added } = this.ensureRequiredHeadings(
-      doc.body,
+      migratedBody,
       doc.meta.state,
     );
     for (const heading of added) {
@@ -286,6 +298,34 @@ export class FixService {
       changes,
       changed: true,
     };
+  }
+
+  private migratePostImplementationScaffold(body: string): { body: string; changed: boolean } {
+    const normalized = body.replace(/\r\n/g, "\n");
+    const insightsHeading = resolveSectionHeading("post_implementation_insights");
+    const activeHeadingRegex = new RegExp(`^${this.escapeRegExp(insightsHeading)}\\s*$`, "m");
+    const commentStripped = normalized.replace(/<!--[\s\S]*?-->/g, "");
+
+    if (activeHeadingRegex.test(commentStripped)) {
+      return { body: normalized, changed: false };
+    }
+
+    const patterns = [
+      /<!--[\s\S]*?##\s+Post-Implementation Insights[\s\S]*?-->\s*/m,
+      /<!--\s*##\s+Post-Implementation Insights\s*-->\s*/m,
+    ];
+
+    for (const pattern of patterns) {
+      if (!pattern.test(normalized)) {
+        continue;
+      }
+
+      const replaced = normalized.replace(pattern, `${postImplementationInsightsScaffold}\n\n`);
+      const sanitized = replaced.replace(/\n{3,}/g, "\n\n");
+      return { body: sanitized, changed: true };
+    }
+
+    return { body: normalized, changed: false };
   }
 
   private async renameIfNeeded(
@@ -529,6 +569,7 @@ export class FixService {
     const added: string[] = [];
 
     const stateSpecificHeadings = requiredHeadingsForState(state);
+    const insightsHeading = resolveSectionHeading("post_implementation_insights");
     for (const heading of stateSpecificHeadings) {
       const headingRegex = new RegExp(`^${this.escapeRegExp(heading)}\\s*$`, "m");
       if (headingRegex.test(next)) {
@@ -544,7 +585,11 @@ export class FixService {
         }
       }
 
-      next += `${heading}\n\n`;
+      if (heading === insightsHeading) {
+        next += `${postImplementationInsightsScaffold}\n\n`;
+      } else {
+        next += `${heading}\n\n`;
+      }
       added.push(heading);
     }
 

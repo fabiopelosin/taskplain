@@ -84,8 +84,8 @@ Every task file has:
 2. **Required headings** in order:
    - `## Overview` - What and why
    - `## Acceptance Criteria` - Checkboxes defining done
-   - `## Technical Approach` - Implementation strategy
-   - `<!-- ## Post-Implementation Insights -->` - Uncomment when completing
+  - `## Technical Approach` - Implementation strategy
+  - `## Post-Implementation Insights` - Stub headings for `### Changelog`, `### Decisions`, `### Architecture` stay empty until completion
 
 ## Task Lifecycle
 
@@ -318,8 +318,8 @@ CONTEXT=$(taskplain pickup fix-mobile-navbar --output json)
 # 3. Perform the work described in the task
 # ... agent implements changes ...
 
-# 4. Before completing, fill Post-Implementation Insights section
-#    (Uncomment the heading and fill Changelog, Decisions, Architecture)
+# 4. Before completing, populate the Post-Implementation Insights stub
+#    (Add entries under Changelog, Decisions, Architecture as applicable)
 
 # 5. Validate and complete
 taskplain complete fix-mobile-navbar
@@ -369,13 +369,12 @@ taskplain complete fix-mobile-navbar --dry-run --output json
 
 **Before running complete:**
 1. Check all acceptance criteria checkboxes
-2. Uncomment `## Post-Implementation Insights` heading
-3. Fill three subsections:
-   - **Changelog** (required) - What shipped using Keep a Changelog verbs
+2. Fill `## Post-Implementation Insights` with concrete entries:
+   - **Changelog** (required) - Summarize shipped behavior using Keep a Changelog verbs
    - **Decisions** (optional) - Key choices, rejected alternatives, rationale
    - **Architecture** (optional) - Notable patterns, refactors, structures
-4. Capture the final Conventional Commit subject with `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` (required for completions dated **2025-11-01** or later)
-5. Optionally rely on `--check-acs` when completing to flip any unchecked Markdown checkboxes to done; the flag does not modify narrative text or comments.
+3. Capture the final Conventional Commit subject with `taskplain update <id> --meta commit_message="feat(scope): … [Task:<id>]"` (required for completions dated **2025-11-01** or later)
+4. Optionally rely on `--check-acs` when completing to flip any unchecked Markdown checkboxes to done; the flag does not modify narrative text or comments.
 
 ```bash
 # Set commit subject before completion
@@ -385,6 +384,18 @@ taskplain update fix-mobile-navbar \
 # Automation can read the stored subject later
 yq -r '.commit_message' "tasks/30-done/2025-03-15 task-fix-mobile-navbar.md"
 ```
+
+#### Editing Post-Implementation Insights
+
+The default template ships with empty `### Changelog`, `### Decisions`, and `### Architecture` headings so agents can add concise bullet lists as work ships. Use `taskplain update --field post_implementation_insights` to replace the entire section without hand-editing Markdown:
+
+```bash
+taskplain update fix-mobile-navbar \
+  --field post_implementation_insights $'### Changelog\n- Added sticky header for viewport <=768px\n\n### Decisions\n- Deferred animation polish until stakeholders confirm copy\n\n### Architecture\n- No structural changes'
+```
+
+Keep the entries terse and outcome-focused—`Changelog` must include at least one bullet. `Decisions` and `Architecture` remain optional but should capture meaningful learnings when they exist.
+Run `taskplain validate --fix` to migrate older tasks that still contain the legacy comment block.
 
 ### Creating Follow-up Tasks
 

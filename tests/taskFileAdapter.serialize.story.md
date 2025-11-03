@@ -35,14 +35,7 @@ last_activity_at: 2024-05-06T07:08:09.123Z
 ## Technical Approach
 - Exercise adapter helpers
 
-<!--
 ## Post-Implementation Insights
-
-> Uncomment this section when moving the task to `done` so completions include the knowledge we extracted.
-> Capture discoveries, decisions, and architecture updates with concrete bullet points.
-> - **Changelog** (required): Summarize what shipped using Keep a Changelog verbs.
-> - **Decisions** (optional): Note key choices, rejected alternatives, and rationale.
-> - **Architecture** (optional): Document notable patterns, refactors, or new structures.
 
 ### Changelog
 - Coverage-focused fixtures
@@ -53,4 +46,3 @@ last_activity_at: 2024-05-06T07:08:09.123Z
 
 ### Architecture
 - 
--->

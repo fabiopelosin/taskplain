@@ -165,6 +165,18 @@ export type TaskDoc = z.infer<typeof taskDocSchema>;
 
 export const postImplementationInsightsHeading = "## Post-Implementation Insights" as const;
 
+export const postImplementationSubsectionHeadings = [
+  "### Changelog",
+  "### Decisions",
+  "### Architecture",
+] as const;
+
+export const postImplementationInsightsScaffold =
+  `${postImplementationInsightsHeading}\n\n` +
+  `${postImplementationSubsectionHeadings[0]}\n\n` +
+  `${postImplementationSubsectionHeadings[1]}\n\n` +
+  postImplementationSubsectionHeadings[2];
+
 export const requiredHeadings = [
   "## Overview",
   "## Acceptance Criteria",
