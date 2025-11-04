@@ -76,14 +76,19 @@ function buildExecutorKey(tool: string | null, model: string | null): ExecutorKe
 }
 
 function selectLatestAttempt(attempts: ExecutionAttempt[]): ExecutionAttempt {
-  if (attempts.length === 1) {
-    return attempts[0]!;
+  if (attempts.length === 0) {
+    throw new Error("selectLatestAttempt requires at least one attempt");
   }
-  return attempts.reduce((latest, candidate) => {
+  let latest = attempts[0];
+  for (let index = 1; index < attempts.length; index += 1) {
+    const candidate = attempts[index];
     const latestEnded = Date.parse(latest.ended_at);
     const candidateEnded = Date.parse(candidate.ended_at);
-    return candidateEnded > latestEnded ? candidate : latest;
-  }, attempts[0]!);
+    if (candidateEnded > latestEnded) {
+      latest = candidate;
+    }
+  }
+  return latest;
 }
 
 function sortAttemptsChronologically(attempts: ExecutionAttempt[]): ExecutionAttempt[] {

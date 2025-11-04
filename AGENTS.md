@@ -51,7 +51,7 @@ Always include the `[Task:<id>]` trailer to link commits to their corresponding 
 
 ## Taskplain usage
 
-<!-- taskplain:start v0.1.0 -->
+<!-- taskplain:start v0.2.0 -->
 This repo uses Taskplain.
 
 All work must flow through the Taskplain CLI to keep task history in-repo and deterministic. Verify installation: `taskplain --help`

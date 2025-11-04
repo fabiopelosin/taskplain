@@ -1805,7 +1805,10 @@ async function handleStats(options: {
       const includeIds = new Set<string>();
       const stack = [root.meta.id];
       while (stack.length > 0) {
-        const currentId = stack.pop()!;
+        const currentId = stack.pop();
+        if (!currentId) {
+          continue;
+        }
         if (includeIds.has(currentId)) {
           continue;
         }

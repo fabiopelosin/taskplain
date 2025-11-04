@@ -1,6 +1,6 @@
 {
   "name": "taskplain",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI for managing repository-native task files with deterministic workflows.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -106,6 +106,22 @@ function escapeForRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+type MutableReviewer = {
+  [key: string]: unknown;
+  reviewed_at?: unknown;
+};
+
+type MutableAttempt = {
+  [key: string]: unknown;
+  started_at?: unknown;
+  ended_at?: unknown;
+  reviewer?: MutableReviewer;
+};
+
+type MutableExecution = {
+  attempts: MutableAttempt[];
+};
+
 function normalizeMeta(data: Record<string, unknown>): Record<string, unknown> {
   const copy = { ...data };
   const timestampKeys = ["created_at", "updated_at", "last_activity_at", "completed_at"];
@@ -121,23 +137,29 @@ function normalizeMeta(data: Record<string, unknown>): Record<string, unknown> {
     }
   }
 
-  const execution = copy.execution;
-  if (execution && typeof execution === "object" && Array.isArray((execution as any).attempts)) {
-    const attempts = (execution as any).attempts as Array<Record<string, unknown>>;
+  const execution = copy.execution as MutableExecution | undefined;
+  if (
+    execution &&
+    typeof execution === "object" &&
+    Array.isArray((execution as MutableExecution).attempts)
+  ) {
+    const attempts = (execution as MutableExecution).attempts;
     for (const attempt of attempts) {
-      if (attempt && typeof attempt === "object") {
-        for (const field of ["started_at", "ended_at"]) {
-          const value = attempt[field];
-          if (value instanceof Date) {
-            attempt[field] = value.toISOString();
-          }
+      if (!attempt || typeof attempt !== "object") {
+        continue;
+      }
+      const target = attempt as MutableAttempt;
+      for (const field of ["started_at", "ended_at"] as const) {
+        const raw = target[field];
+        if (raw instanceof Date) {
+          target[field] = raw.toISOString();
         }
-        const reviewer = attempt.reviewer;
-        if (reviewer && typeof reviewer === "object") {
-          const reviewedAt = (reviewer as Record<string, unknown>).reviewed_at;
-          if (reviewedAt instanceof Date) {
-            (reviewer as Record<string, unknown>).reviewed_at = reviewedAt.toISOString();
-          }
+      }
+      const reviewer = target.reviewer;
+      if (reviewer && typeof reviewer === "object") {
+        const reviewedAt = reviewer.reviewed_at;
+        if (reviewedAt instanceof Date) {
+          reviewer.reviewed_at = reviewedAt.toISOString();
         }
       }
     }
